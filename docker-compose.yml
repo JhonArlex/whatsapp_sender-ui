@@ -1,0 +1,15 @@
+# Solo la UI (construye con la URL de la API fijada al build).
+# Ajusta VITE_BULK_API_URL a donde el navegador llame a la API.
+# docker compose up -d --build
+
+services:
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_BULK_API_URL: ${VITE_BULK_API_URL:-http://localhost:8010}
+    container_name: bulk-sender-ui
+    restart: unless-stopped
+    ports:
+      - "${BULK_UI_PORT:-3010}:80"
