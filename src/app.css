@@ -88,6 +88,11 @@
   color: #fff;
 }
 
+.btn.danger {
+  background: #dc2626;
+  color: #fff;
+}
+
 .btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -154,6 +159,12 @@
   color: #0d9488;
 }
 
+.stats .btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 0.25rem;
+}
+
 .badge-ok,
 .badge-bad,
 .badge-pending,
@@ -189,6 +200,11 @@
 .tag.muted {
   background: #f1f5f9;
   color: #64748b;
+}
+
+.tag.warn {
+  background: #ffedd5;
+  color: #c2410c;
 }
 
 .bar-wrap {

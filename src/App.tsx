@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  cancelarEnvio,
   fetchJob,
   getSavedKey,
   getSavedUrl,
@@ -11,7 +12,8 @@ import "./app.css";
 
 const POLL_MS = 1500;
 
-const estadosOk = (e: string) => e === "completado" || e === "error";
+const estadosOk = (e: string) =>
+  e === "completado" || e === "error" || e === "cancelado";
 
 function badgeClass(est: string) {
   if (est === "ok") {
@@ -34,6 +36,7 @@ export function App() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPoll = useCallback(() => {
@@ -88,6 +91,22 @@ export function App() {
       setErr(e instanceof Error ? e.message : "No se pudo iniciar el envío");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDetener() {
+    saveConnection(baseUrl, apiKey);
+    setErr(null);
+    setStopping(true);
+    try {
+      await cancelarEnvio(baseUrl, apiKey);
+      if (jobId) {
+        void pollOnce(jobId);
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "No se pudo detener el envío");
+    } finally {
+      setStopping(false);
     }
   }
 
@@ -164,7 +183,9 @@ export function App() {
                       ? "tag ok"
                       : job.estado === "error"
                         ? "tag bad"
-                        : "tag pending"
+                        : job.estado === "cancelado"
+                          ? "tag warn"
+                          : "tag pending"
                   }
                 >
                   {job.estado}
@@ -177,6 +198,16 @@ export function App() {
                 <div className="ok">Éxitos: {job.exitosos}</div>
                 <div className="bad">Fallos: {job.fallidos}</div>
                 {job.grupo_actual && <div className="current">Ahora: {job.grupo_actual}</div>}
+                {(job.estado === "ejecutando" || (!job && jobId)) && (
+                  <button
+                    type="button"
+                    className="btn danger"
+                    disabled={stopping}
+                    onClick={handleDetener}
+                  >
+                    {stopping ? "Deteniendo…" : "Detener envío"}
+                  </button>
+                )}
               </div>
               {job.total_grupos > 0 && (
                 <div className="bar-wrap">

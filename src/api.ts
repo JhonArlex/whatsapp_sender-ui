@@ -68,6 +68,22 @@ export async function iniciarEnvio(
   return r.json();
 }
 
+export async function cancelarEnvio(
+  baseUrl: string,
+  apiKey: string,
+): Promise<{ ok: boolean; mensaje: string }> {
+  const r = await fetch(`${baseUrl}/api/v1/envios/cancelar`, {
+    method: "POST",
+    headers: headers(apiKey),
+    body: "{}",
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}
+
 export async function fetchJob(baseUrl: string, apiKey: string, jobId: string): Promise<JobEstado> {
   const r = await fetch(`${baseUrl}/api/v1/envios/${encodeURIComponent(jobId)}`, {
     headers: headers(apiKey),
