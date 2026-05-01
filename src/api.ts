@@ -94,3 +94,97 @@ export async function fetchJob(baseUrl: string, apiKey: string, jobId: string): 
   }
   return r.json();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Schedule API
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface Schedule {
+  id: string;
+  hora: string;
+  dias_semana: string[];
+  desde_fila: number;
+  activo: boolean;
+  ultima_ejecucion: string | null;
+  creado: string;
+}
+
+export interface ScheduleHistoryEntry {
+  id: string;
+  schedule_id: string;
+  hora_programada: string;
+  ejecutado_en: string;
+  job_id: string | null;
+  estado: string;
+  detalle: string | null;
+}
+
+export async function fetchSchedules(baseUrl: string, apiKey: string): Promise<{ schedules: Schedule[] }> {
+  const r = await fetch(`${baseUrl}/api/v1/schedules`, {
+    headers: headers(apiKey),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}
+
+export async function createSchedule(
+  baseUrl: string,
+  apiKey: string,
+  data: { hora: string; dias_semana?: string[]; desde_fila?: number },
+): Promise<Schedule> {
+  const r = await fetch(`${baseUrl}/api/v1/schedules`, {
+    method: "POST",
+    headers: headers(apiKey),
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}
+
+export async function deleteSchedule(baseUrl: string, apiKey: string, scheduleId: string): Promise<void> {
+  const r = await fetch(`${baseUrl}/api/v1/schedules/${encodeURIComponent(scheduleId)}`, {
+    method: "DELETE",
+    headers: headers(apiKey),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+}
+
+export async function toggleSchedule(
+  baseUrl: string,
+  apiKey: string,
+  scheduleId: string,
+): Promise<{ ok: boolean; activo: boolean }> {
+  const r = await fetch(`${baseUrl}/api/v1/schedules/${encodeURIComponent(scheduleId)}/toggle`, {
+    method: "PUT",
+    headers: headers(apiKey),
+    body: "{}",
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}
+
+export async function fetchScheduleHistory(
+  baseUrl: string,
+  apiKey: string,
+): Promise<{ history: ScheduleHistoryEntry[] }> {
+  const r = await fetch(`${baseUrl}/api/v1/schedules/history`, {
+    headers: headers(apiKey),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}

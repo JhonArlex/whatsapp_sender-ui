@@ -1,6 +1,8 @@
 # Solo la UI (construye con la URL de la API fijada al build).
-# Ajusta VITE_BULK_API_URL a donde el navegador llame a la API.
+# Ajusta VITE_BULK_API_URL a donde el navegador llame a la API (compone desde .env junto al compose).
 # docker compose up -d --build
+#
+# Esta imagen NO usa env_file en runtime: solo build-args (URL embebida en assets Vite).
 
 services:
   ui:

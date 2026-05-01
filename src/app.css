@@ -276,3 +276,199 @@ th {
   max-width: 280px;
   word-break: break-word;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Tabs / Navegación
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.tab {
+  border: none;
+  padding: 0.55rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 8px 8px 0 0;
+  background: #e2e8f0;
+  color: #64748b;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab.active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 -1px 3px rgb(0 0 0 / 0.06);
+}
+
+.tab:hover {
+  background: #cbd5e1;
+}
+
+.tab.active:hover {
+  background: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Schedule list
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.schedule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  gap: 1rem;
+}
+
+.schedule-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.schedule-info strong {
+  font-size: 1.05rem;
+  color: #0f172a;
+  min-width: 3ch;
+}
+
+.schedule-info .dias {
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.schedule-info .desde {
+  color: #64748b;
+  font-size: 0.8rem;
+  background: #e2e8f0;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+
+.schedule-info .ultima {
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.schedule-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.toggle-btn {
+  border: none;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  min-width: 42px;
+}
+
+.toggle-btn.on {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.toggle-btn.off {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.btn.danger-sm {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1rem;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.btn.danger-sm:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Schedule form
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-row label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.form-row select,
+.form-row .num-input {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  font: inherit;
+  max-width: 200px;
+}
+
+.form-row .num-input {
+  max-width: 120px;
+}
+
+.dias-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.dia-check {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  color: #334155 !important;
+}
+
+.dia-check input[type="checkbox"] {
+  accent-color: #0d9488;
+}
+
+.schedule-form .hint {
+  margin: 0.25rem 0 0;
+}
+
+.schedule-form .btn.primary {
+  align-self: flex-start;
+}
