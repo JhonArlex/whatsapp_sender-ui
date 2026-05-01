@@ -4,8 +4,10 @@ import {
   createSchedule,
   deleteSchedule,
   fetchJob,
+  fetchLatestJob,
   fetchScheduleHistory,
   fetchSchedules,
+  getSavedJobId,
   getSavedKey,
   getSavedUrl,
   iniciarEnvio,
@@ -13,6 +15,7 @@ import {
   type Schedule,
   type ScheduleHistoryEntry,
   saveConnection,
+  saveJobId,
   toggleSchedule,
 } from "./api";
 import "./app.css";
@@ -130,6 +133,32 @@ export function App() {
       }
     };
   }, [jobId, pollOnce]);
+
+  // ── Persistir / restaurar jobId entre recargas ────────────────────────
+
+  // Al montar, intenta recuperar el último job del localStorage o de la API
+  useEffect(() => {
+    const saved = getSavedJobId();
+    if (saved) {
+      setJobId(saved);
+      return;
+    }
+    // Si no hay saved, preguntar a la API por el último job
+    const url = getSavedUrl();
+    const key = getSavedKey();
+    fetchLatestJob(url, key).then((id) => {
+      if (id) setJobId(id);
+    });
+    // Solo al montar, sin depender de state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persistir jobId cada vez que cambia
+  useEffect(() => {
+    if (jobId) {
+      saveJobId(jobId);
+    }
+  }, [jobId]);
 
   // ── Cargar schedules / historial ──────────────────────────────────────
 

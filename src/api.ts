@@ -15,10 +15,39 @@ export function getSavedKey(): string {
   return localStorage.getItem(LS_KEY) || "";
 }
 
+const LS_JOB_ID = "bulk_sender_last_job_id";
+
 export function saveConnection(baseUrl: string, apiKey: string) {
   const u = baseUrl.replace(/\/$/, "");
   localStorage.setItem(LS_URL, u);
   localStorage.setItem(LS_KEY, apiKey);
+}
+
+export function getSavedJobId(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem(LS_JOB_ID);
+}
+
+export function saveJobId(jobId: string) {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(LS_JOB_ID, jobId);
+  }
+}
+
+export function clearSavedJobId() {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(LS_JOB_ID);
+  }
+}
+
+export async function fetchLatestJob(baseUrl: string, apiKey: string): Promise<string | null> {
+  const r = await fetch(`${baseUrl}/api/v1/envios`, {
+    headers: headers(apiKey),
+  });
+  if (!r.ok) return null;
+  const data = await r.json();
+  const ids: string[] = data.job_ids ?? [];
+  return ids.length > 0 ? ids[ids.length - 1] : null;
 }
 
 export interface JobEstado {
