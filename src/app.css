@@ -207,6 +207,23 @@
   color: #c2410c;
 }
 
+.tag.running {
+  background: #fef3c7;
+  color: #b45309;
+  box-shadow: 0 0 0 1px rgb(245 158 11 / 0.35);
+  animation: tag-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes tag-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
 .bar-wrap {
   height: 8px;
   background: #e2e8f0;
@@ -269,6 +286,11 @@ th {
 
 .row-err {
   background: #fef2f2;
+}
+
+.row-enviando {
+  background: #fffbeb;
+  box-shadow: inset 3px 0 0 #f59e0b;
 }
 
 .detalle {

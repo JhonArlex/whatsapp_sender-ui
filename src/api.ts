@@ -67,6 +67,7 @@ export interface JobEstado {
     fila: number;
     grupo_id: string;
     nombre: string;
+    /** pendiente | enviando | ok | error */
     estado: string;
     detalle: string | null;
   }>;

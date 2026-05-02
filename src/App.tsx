@@ -32,10 +32,28 @@ function badgeClass(est: string) {
   if (est === "error") {
     return "bad";
   }
+  if (est === "enviando") {
+    return "running";
+  }
   if (est === "pendiente" || est === "ejecutando") {
     return "pending";
   }
   return "muted";
+}
+
+function filaEnvioLabel(est: string) {
+  switch (est) {
+    case "pendiente":
+      return "Pendiente";
+    case "enviando":
+      return "Enviando…";
+    case "ok":
+      return "OK";
+    case "error":
+      return "Error";
+    default:
+      return est;
+  }
 }
 
 // ── Helpers para días de semana ─────────────────────────────────────────────
@@ -413,7 +431,7 @@ export function App() {
                           <th>Fila</th>
                           <th>ID</th>
                           <th>Nombre</th>
-                          <th>Resultado</th>
+                          <th>Estado</th>
                           <th>Detalle</th>
                         </tr>
                       </thead>
@@ -426,14 +444,18 @@ export function App() {
                                 ? "row-ok"
                                 : row.estado === "error"
                                   ? "row-err"
-                                  : ""
+                                  : row.estado === "enviando"
+                                    ? "row-enviando"
+                                    : ""
                             }
                           >
                             <td>{row.fila}</td>
                             <td className="mono">{row.grupo_id}</td>
                             <td>{row.nombre}</td>
                             <td>
-                              <span className={`tag ${badgeClass(row.estado)}`}>{row.estado}</span>
+                              <span className={`tag ${badgeClass(row.estado)}`}>
+                                {filaEnvioLabel(row.estado)}
+                              </span>
                             </td>
                             <td className="detalle">{row.detalle || "—"}</td>
                           </tr>
