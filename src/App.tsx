@@ -77,6 +77,19 @@ function diasLabel(dias: string[]): string {
 
 // ── Generar opciones HH:MM ──────────────────────────────────────────────────
 
+function shortId(id: string): string {
+  return id.length > 14 ? `${id.slice(0, 10)}…` : id;
+}
+
+function formatTs(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("es-CO");
+  } catch {
+    return String(iso);
+  }
+}
+
 function horaOptions(): string[] {
   const opts: string[] = [];
   for (let h = 0; h < 24; h++) {
@@ -112,6 +125,11 @@ export function App() {
   const [newDias, setNewDias] = useState<string[]>([]);
   const [newDesde, setNewDesde] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+
+  const [cronExecDetail, setCronExecDetail] = useState<ScheduleHistoryEntry | null>(null);
+  const [cronExecJob, setCronExecJob] = useState<JobEstado | null>(null);
+  const [cronExecJobLoading, setCronExecJobLoading] = useState(false);
+  const [cronExecJobErr, setCronExecJobErr] = useState<string | null>(null);
 
   const stopPoll = useCallback(() => {
     if (pollRef.current) {
@@ -279,6 +297,36 @@ export function App() {
   }
 
   // ── Cargar schedules al cambiar a pestaña ─────────────────────────────
+
+  useEffect(() => {
+    if (!cronExecDetail?.job_id) {
+      setCronExecJob(null);
+      setCronExecJobErr(null);
+      setCronExecJobLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCronExecJobLoading(true);
+    setCronExecJobErr(null);
+    setCronExecJob(null);
+    saveConnection(baseUrl, apiKey);
+    void fetchJob(baseUrl, apiKey, cronExecDetail.job_id)
+      .then((j) => {
+        if (!cancelled) {
+          setCronExecJob(j);
+          setCronExecJobLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setCronExecJobErr(e instanceof Error ? e.message : "No se pudo cargar el job");
+          setCronExecJobLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cronExecDetail, baseUrl, apiKey]);
 
   useEffect(() => {
     if (tab === "programacion") {
@@ -579,6 +627,10 @@ export function App() {
           {/* ── Historial ────────────────────────────────── */}
           <section className="card">
             <h2>Historial de ejecuciones</h2>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Registros completos en base de datos (orden: más reciente arriba). El botón «Ver todo» abre los
+              campos guardados y, si hay job, el detalle por grupo mientras siga en memoria del servidor.
+            </p>
             {!schLoading && scheduleHistory.length === 0 && (
               <p className="muted">Sin ejecuciones registradas todavía.</p>
             )}
@@ -587,15 +639,19 @@ export function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Hora prog.</th>
+                      <th>Registro</th>
+                      <th>Prog.</th>
+                      <th>Hora</th>
                       <th>Ejecutado</th>
+                      <th>Finalizado</th>
                       <th>Estado</th>
-                      <th>Job ID</th>
-                      <th>Detalle</th>
+                      <th>Job</th>
+                      <th>Resumen</th>
+                      <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {[...scheduleHistory].reverse().slice(0, 100).map((h) => (
+                    {scheduleHistory.map((h) => (
                       <tr
                         key={h.id}
                         className={
@@ -606,13 +662,31 @@ export function App() {
                               : ""
                         }
                       >
+                        <td className="mono" title={h.id}>
+                          {shortId(h.id)}
+                        </td>
+                        <td className="mono" title={h.schedule_id || ""}>
+                          {h.schedule_id ? shortId(h.schedule_id) : "—"}
+                        </td>
                         <td>{h.hora_programada}</td>
-                        <td>{new Date(h.ejecutado_en).toLocaleString("es-CO")}</td>
+                        <td>{formatTs(h.ejecutado_en)}</td>
+                        <td>{formatTs(h.finalizado_en)}</td>
                         <td>
                           <span className={`tag ${badgeClass(h.estado)}`}>{h.estado}</span>
                         </td>
-                        <td className="mono">{h.job_id || "—"}</td>
+                        <td className="mono" title={h.job_id || ""}>
+                          {h.job_id ? shortId(h.job_id) : "—"}
+                        </td>
                         <td className="detalle">{h.detalle || "—"}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn sm"
+                            onClick={() => setCronExecDetail(h)}
+                          >
+                            Ver todo
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -621,6 +695,146 @@ export function App() {
             )}
           </section>
         </>
+      )}
+
+      {cronExecDetail && (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cron-detail-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setCronExecDetail(null);
+            }
+          }}
+        >
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-close-row">
+              <button
+                type="button"
+                className="btn sm"
+                onClick={() => setCronExecDetail(null)}
+              >
+                Cerrar
+              </button>
+            </div>
+            <h3 id="cron-detail-title">Datos de ejecución (cron)</h3>
+            <dl className="dl-cron">
+              <dt>ID registro</dt>
+              <dd className="mono">{cronExecDetail.id}</dd>
+              <dt>ID programación</dt>
+              <dd className="mono">{cronExecDetail.schedule_id || "—"}</dd>
+              <dt>Hora programada</dt>
+              <dd>{cronExecDetail.hora_programada}</dd>
+              <dt>Ejecutado (inicio)</dt>
+              <dd>{formatTs(cronExecDetail.ejecutado_en)}</dd>
+              <dt>Finalizado</dt>
+              <dd>{formatTs(cronExecDetail.finalizado_en)}</dd>
+              <dt>Estado</dt>
+              <dd>
+                <span className={`tag ${badgeClass(cronExecDetail.estado)}`}>
+                  {cronExecDetail.estado}
+                </span>
+              </dd>
+              <dt>Job ID</dt>
+              <dd className="mono">{cronExecDetail.job_id || "—"}</dd>
+              <dt>Detalle (persistido)</dt>
+              <dd className="detalle" style={{ maxWidth: "none" }}>
+                {cronExecDetail.detalle || "—"}
+              </dd>
+            </dl>
+
+            {cronExecDetail.job_id ? (
+              <>
+                <h3>Envíos por grupo</h3>
+                <p className="hint" style={{ marginTop: 0 }}>
+                  Viene de <code>GET /api/v1/envios/{"{job_id}"}</code>. Si reiniciaste la API y el job ya no está
+                  en memoria, verás error aunque el resumen anterior siga en la tabla.
+                </p>
+                {cronExecJobLoading && <p className="muted">Cargando estado del job…</p>}
+                {cronExecJobErr && <p className="err">{cronExecJobErr}</p>}
+                {cronExecJob && !cronExecJobLoading && (
+                  <>
+                    <div className="summary">
+                      <span
+                        className={
+                          cronExecJob.estado === "completado"
+                            ? "tag ok"
+                            : cronExecJob.estado === "error"
+                              ? "tag bad"
+                              : cronExecJob.estado === "cancelado"
+                                ? "tag warn"
+                                : "tag pending"
+                        }
+                      >
+                        {cronExecJob.estado}
+                      </span>
+                      {cronExecJob.error && <span className="err-inline">{cronExecJob.error}</span>}
+                    </div>
+                    <div className="stats">
+                      <div>Desde fila: {cronExecJob.desde_fila}</div>
+                      <div>Total: {cronExecJob.total_grupos}</div>
+                      <div>Procesados: {cronExecJob.procesados}</div>
+                      <div className="ok">Éxitos: {cronExecJob.exitosos}</div>
+                      <div className="bad">Fallos: {cronExecJob.fallidos}</div>
+                      {cronExecJob.grupo_actual && (
+                        <div className="current">Ahora: {cronExecJob.grupo_actual}</div>
+                      )}
+                    </div>
+                    <p className="meta" style={{ marginBottom: "0.5rem" }}>
+                      Creado: {formatTs(cronExecJob.creado)} · Iniciado: {formatTs(cronExecJob.iniciado)} ·
+                      Finalizado: {formatTs(cronExecJob.finalizado)}
+                    </p>
+                    <div className="table-wrap" style={{ maxHeight: "min(40vh, 320px)" }}>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Fila</th>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Detalle</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cronExecJob.envios.map((row) => (
+                            <tr
+                              key={row.fila}
+                              className={
+                                row.estado === "ok"
+                                  ? "row-ok"
+                                  : row.estado === "error"
+                                    ? "row-err"
+                                    : row.estado === "enviando"
+                                      ? "row-enviando"
+                                      : ""
+                              }
+                            >
+                              <td>{row.fila}</td>
+                              <td className="mono">{row.grupo_id}</td>
+                              <td>{row.nombre}</td>
+                              <td>
+                                <span className={`tag ${badgeClass(row.estado)}`}>
+                                  {filaEnvioLabel(row.estado)}
+                                </span>
+                              </td>
+                              <td className="detalle">{row.detalle || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <p className="muted">
+                No hay job asociado (el envío no llegó a crearse). Solo aplica la información persistida arriba.
+              </p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

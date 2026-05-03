@@ -144,6 +144,8 @@ export interface ScheduleHistoryEntry {
   schedule_id: string;
   hora_programada: string;
   ejecutado_en: string;
+  /** ISO; null hasta que el job termina y el scheduler actualiza la fila */
+  finalizado_en: string | null;
   job_id: string | null;
   estado: string;
   detalle: string | null;
