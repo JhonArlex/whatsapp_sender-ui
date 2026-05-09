@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 
 const API_URL = import.meta.env.VITE_BULK_API_URL || "http://localhost:8010";
+const MEDIA_BASE = API_URL + "/api/v1/message-templates/media";
 
 interface Template {
   id: string;
@@ -66,7 +67,7 @@ export default function TemplatesPage() {
     setContent(t.content);
     setLinkUrl(t.link_url || "");
     setUploadedUrls(t.media_urls || []);
-    setPreviews((t.media_urls || []).map((u) => `${API_URL}${u}`));
+    setPreviews((t.media_urls || []).map((u) => u));
     setError("");
     setModal("edit");
   };
@@ -97,7 +98,7 @@ export default function TemplatesPage() {
     setUploading(true);
     try {
       const res = await templatesApi.uploadMedia(Array.from(files));
-      const newUrls = res.data.files.map((f: any) => f.url);
+      const newUrls = res.data.files.map((f: any) => f.filename);
       setUploadedUrls((prev) => [...prev, ...newUrls]);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Error al subir imágenes");
@@ -201,7 +202,7 @@ export default function TemplatesPage() {
                   {t.media_urls.map((url, i) => (
                     <img
                       key={i}
-                      src={`${API_URL}${url}`}
+                      src={url}
                       alt=""
                       className="h-20 w-20 object-cover rounded-md shrink-0"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
