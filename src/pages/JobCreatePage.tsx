@@ -48,6 +48,20 @@ export default function JobCreatePage() {
     });
   };
 
+  const selectAllFiltered = () => {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      for (const g of filteredGroups) {
+        next.set(g.id, g);
+      }
+      return next;
+    });
+  };
+
+  const deselectAll = () => {
+    setSelected(new Map());
+  };
+
   const handleCreate = async () => {
     if (selected.size === 0 || !messageText.trim()) return;
     setCreating(true);
@@ -115,6 +129,22 @@ export default function JobCreatePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <div className="flex gap-2 text-xs">
+              <button
+                type="button"
+                onClick={selectAllFiltered}
+                className="text-primary hover:underline cursor-pointer"
+              >
+                ✓ Seleccionar todos
+              </button>
+              <button
+                type="button"
+                onClick={deselectAll}
+                className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+              >
+                ✕ Deseleccionar todos
+              </button>
+            </div>
             <div className="max-h-96 overflow-y-auto space-y-1 border rounded-md p-2">
               {filteredGroups.map((g) => (
                 <div
