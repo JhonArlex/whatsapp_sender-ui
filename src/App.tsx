@@ -11,6 +11,7 @@ import JobsPage from "./pages/JobsPage";
 import JobCreatePage from "./pages/JobCreatePage";
 import JobDetailPage from "./pages/JobDetailPage";
 import MessagesPage from "./pages/MessagesPage";
+import TemplatesPage from "./pages/TemplatesPage";
 import { type ReactNode } from "react";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {

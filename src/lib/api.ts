@@ -107,6 +107,16 @@ export const jobsApi = {
   retryFailed: (id: string) => api.post(`/api/v1/jobs/${id}/retry-failed`),
 };
 
+
+export const templatesApi = {
+  list: () => api.get("/api/v1/message-templates"),
+  create: (data: { name: string; content: string; msg_type?: string }) =>
+    api.post("/api/v1/message-templates", data),
+  update: (id: string, data: { name?: string; content?: string }) =>
+    api.put(`/api/v1/message-templates/${id}`, data),
+  delete: (id: string) => api.delete(`/api/v1/message-templates/${id}`),
+};
+
 export const messagesApi = {
   list: (params?: {
     job_id?: string;

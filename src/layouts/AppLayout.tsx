@@ -7,16 +7,19 @@ const navItems = [
   { path: "/connections", label: "Conexiones", icon: "🔗" },
   { path: "/instances", label: "Instancias", icon: "📱" },
   { path: "/groups", label: "Grupos", icon: "👥" },
+  { path: "/templates", label: "Plantillas", icon: "📝" },
   { path: "/jobs", label: "Jobs", icon: "📨" },
   { path: "/messages", label: "Mensajes", icon: "💬" },
 ];
 
 // Versión del deploy — actualizar al hacer deploy
-const APP_VERSION = "v1.2.2";
+const APP_VERSION = "v1.3.0";
 const APP_CHANGES = [
   "➕ Editar conexiones Evolution",
   "🔍 Errores detallados al verificar conexión",
   "🐛 Fix: Origin header en verificación Evolution",
+  "➕ CRUD de plantillas de mensajes",
+  "🔄 Jobs usan plantillas predefinidas",
   "🐛 Fix: endpoint /instance/fetchInstances (era fetchAll)",
   "🐛 Fix: re-encriptar API Key (CRYPTO_KEY inconsistente)",
 ];
