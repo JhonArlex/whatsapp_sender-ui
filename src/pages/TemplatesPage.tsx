@@ -9,10 +9,9 @@ const API_URL = import.meta.env.VITE_BULK_API_URL || "http://localhost:8010";
 interface Template {
   id: string;
   name: string;
-  msg_type: string;
   content: string;
-  media_url: string;
-  media_type: string;
+  media_urls: string[];
+  link_url: string;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -26,12 +25,15 @@ export default function TemplatesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
-  const [msgType, setMsgType] = useState("text");
-  const [mediaUrl, setMediaUrl] = useState("");
-  const [mediaPreview, setMediaPreview] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+
+  // Multiple images
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [error, setError] = useState("");
 
   const load = () => {
     templatesApi
@@ -51,9 +53,9 @@ export default function TemplatesPage() {
     setEditingId(null);
     setName("");
     setContent("");
-    setMsgType("text");
-    setMediaUrl("");
-    setMediaPreview("");
+    setLinkUrl("");
+    setUploadedUrls([]);
+    setPreviews([]);
     setError("");
     setModal("create");
   };
@@ -62,9 +64,9 @@ export default function TemplatesPage() {
     setEditingId(t.id);
     setName(t.name);
     setContent(t.content);
-    setMsgType(t.msg_type || "text");
-    setMediaUrl(t.media_url || "");
-    setMediaPreview(t.media_url ? `${API_URL}${t.media_url}` : "");
+    setLinkUrl(t.link_url || "");
+    setUploadedUrls(t.media_urls || []);
+    setPreviews((t.media_urls || []).map((u) => `${API_URL}${u}`));
     setError("");
     setModal("edit");
   };
@@ -72,29 +74,47 @@ export default function TemplatesPage() {
   const closeModal = () => {
     setModal(null);
     setEditingId(null);
+    // Limpiar object URLs
+    previews.forEach((p) => {
+      if (p.startsWith("blob:")) URL.revokeObjectURL(p);
+    });
   };
 
-  // ── File upload ────────────────────────────────────────────────
+  // ── Multi-file upload ──────────────────────────────────────────
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFilesSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Show preview
-    setMediaPreview(URL.createObjectURL(file));
-    setMsgType("image");
+    // Show local previews immediately
+    const newPreviews: string[] = [];
+    for (const f of Array.from(files)) {
+      newPreviews.push(URL.createObjectURL(f));
+    }
+    setPreviews((prev) => [...prev, ...newPreviews]);
 
+    // Upload each file
     setUploading(true);
     try {
-      const res = await templatesApi.uploadMedia(file);
-      setMediaUrl(res.data.url);
-      setMsgType("image");
+      const res = await templatesApi.uploadMedia(Array.from(files));
+      const newUrls = res.data.files.map((f: any) => f.url);
+      setUploadedUrls((prev) => [...prev, ...newUrls]);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Error al subir imagen");
-      setMediaPreview("");
+      setError(err.response?.data?.detail || "Error al subir imágenes");
+      // Remove failed previews
+      setPreviews((prev) => prev.slice(0, prev.length - Array.from(files).length));
     } finally {
       setUploading(false);
+      // Reset file input so same files can be re-selected
+      if (fileRef.current) fileRef.current.value = "";
     }
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedUrls((prev) => prev.filter((_, i) => i !== index));
+    const prevToRemove = previews[index];
+    if (prevToRemove?.startsWith("blob:")) URL.revokeObjectURL(prevToRemove);
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   // ── Submit ─────────────────────────────────────────────────────
@@ -111,12 +131,9 @@ export default function TemplatesPage() {
     const payload: any = {
       name: name.trim(),
       content: content.trim(),
-      msg_type: msgType,
+      media_urls: uploadedUrls,
+      link_url: linkUrl.trim(),
     };
-    if (mediaUrl) {
-      payload.media_url = mediaUrl;
-      payload.media_type = msgType === "image" ? "image" : "";
-    }
 
     try {
       if (editingId) {
@@ -147,16 +164,14 @@ export default function TemplatesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Plantillas de mensajes</h1>
-          <p className="text-muted-foreground">Crea plantillas con texto e imágenes para usar en los envíos</p>
+          <p className="text-muted-foreground">Crea plantillas con texto, imágenes y enlaces</p>
         </div>
         <Button onClick={openCreate}>Nueva plantilla</Button>
       </div>
 
-      {/* Empty state */}
       {templates.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -166,29 +181,36 @@ export default function TemplatesPage() {
         </Card>
       )}
 
-      {/* Grid */}
       <div className="grid gap-4 md:grid-cols-2">
         {templates.map((t) => (
           <Card key={t.id}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 {t.name}
-                <span className="text-xs text-muted-foreground font-normal">
-                  {t.msg_type === "image" ? "🖼️" : t.msg_type === "link" ? "🔗" : "💬"}
-                </span>
+                {(t.media_urls?.length > 0 || t.link_url) && (
+                  <span className="text-xs text-muted-foreground">
+                    {t.media_urls?.length > 0 && `🖼️${t.media_urls.length} `}
+                    {t.link_url && "🔗"}
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {/* Media preview */}
-              {t.media_url && (
-                <div className="rounded-md overflow-hidden bg-muted">
-                  <img
-                    src={`${API_URL}${t.media_url}`}
-                    alt=""
-                    className="w-full h-32 object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
+              {t.media_urls && t.media_urls.length > 0 && (
+                <div className="flex gap-1 overflow-x-auto">
+                  {t.media_urls.map((url, i) => (
+                    <img
+                      key={i}
+                      src={`${API_URL}${url}`}
+                      alt=""
+                      className="h-20 w-20 object-cover rounded-md shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ))}
                 </div>
+              )}
+              {t.link_url && (
+                <p className="text-xs text-blue-600 truncate">🔗 {t.link_url}</p>
               )}
               <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-3">
                 {t.content}
@@ -232,66 +254,11 @@ export default function TemplatesPage() {
                   />
                 </div>
 
-                {/* Message type selector */}
-                <div>
-                  <label className="text-sm font-medium block mb-1">Tipo de mensaje</label>
-                  <div className="flex gap-2">
-                    {[
-                      { value: "text", label: "💬 Solo texto" },
-                      { value: "image", label: "🖼️ Texto + imagen" },
-                      { value: "link", label: "🔗 Texto + enlace" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setMsgType(opt.value)}
-                        className={`px-3 py-2 rounded-md text-sm border transition-colors ${
-                          msgType === opt.value
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background hover:bg-muted"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Image upload (visible when type is image) */}
-                {msgType === "image" && (
-                  <div>
-                    <label className="text-sm font-medium block mb-1">Imagen</label>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={handleFileSelect}
-                      className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                    />
-                    {uploading && <p className="text-xs text-muted-foreground mt-1">Subiendo...</p>}
-                    {mediaPreview && (
-                      <div className="mt-2 rounded-md overflow-hidden bg-muted">
-                        <img src={mediaPreview} alt="Preview" className="w-full h-40 object-cover" />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Link URL (visible when type is link) */}
-                {msgType === "link" && (
-                  <div>
-                    <label className="text-sm font-medium block mb-1">URL del enlace</label>
-                    <Input
-                      placeholder="https://ejemplo.com/oferta"
-                      value={mediaUrl}
-                      onChange={(e) => setMediaUrl(e.target.value)}
-                    />
-                  </div>
-                )}
-
                 {/* Content */}
                 <div>
-                  <label className="text-sm font-medium block mb-1">Contenido del mensaje</label>
+                  <label className="text-sm font-medium block mb-1">
+                    Mensaje <span className="text-muted-foreground font-normal">(requerido)</span>
+                  </label>
                   <textarea
                     className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                     placeholder="Escribe el mensaje..."
@@ -302,6 +269,52 @@ export default function TemplatesPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     Placeholders: {"{nombre}"}, {"{grupo}"}
                   </p>
+                </div>
+
+                {/* Link (optional) */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Enlace <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </label>
+                  <Input
+                    placeholder="https://ejemplo.com/oferta"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* Images (multiple, optional) */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Imágenes <span className="text-muted-foreground font-normal">(opcional, máx 10)</span>
+                  </label>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleFilesSelect}
+                    className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  />
+                  {uploading && <p className="text-xs text-muted-foreground mt-1">Subiendo...</p>}
+
+                  {/* Preview grid */}
+                  {previews.length > 0 && (
+                    <div className="mt-2 grid grid-cols-4 gap-2">
+                      {previews.map((p, i) => (
+                        <div key={i} className="relative group">
+                          <img src={p} alt="" className="w-full h-20 object-cover rounded-md" />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(i)}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
