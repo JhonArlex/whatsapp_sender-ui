@@ -12,11 +12,12 @@ const navItems = [
 ];
 
 // Versión del deploy — actualizar al hacer deploy
-const APP_VERSION = "v1.2.0";
+const APP_VERSION = "v1.2.1";
 const APP_CHANGES = [
   "➕ Editar conexiones Evolution",
   "🔍 Errores detallados al verificar conexión",
   "🐛 Fix: Origin header en verificación Evolution",
+  "🐛 Fix: endpoint /instance/fetchInstances (era fetchAll)",
 ];
 
 export default function AppLayout() {
