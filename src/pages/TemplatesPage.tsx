@@ -4,7 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 
-const API_URL = import.meta.env.VITE_BULK_API_URL || "http://localhost:8010";
+const API_URL = (import.meta.env.VITE_BULK_API_URL || "");
 
 interface Template {
   id: string;
@@ -111,10 +111,13 @@ export default function TemplatesPage() {
   // Construye URL de imagen soportando formatos nuevos (/api/v1/...) y viejos (solo filename)
   const imageUrl = (stored: string) => {
     if (!stored) return "";
-    if (stored.startsWith("http") || stored.startsWith("/api/")) return `${API_URL}${stored}`;
-    // Backwards compat: si es solo filename, anteponer el path completo
+    // Si ya es URL absoluta, usarla directamente
+    if (stored.startsWith("http")) return stored;
+    // Si empieza con /api/, es ruta relativa al mismo origen (nginx proxy)
+    if (stored.startsWith("/api/")) return stored;
+    // Backwards compat: si es solo filename (templates viejos)
     const clean = stored.replace(/^\//, "");
-    return `${API_URL}/api/v1/message-templates/media/${clean}`;
+    return `/api/v1/message-templates/media/${clean}`;
   };
 
   const removeImage = (index: number) => {
