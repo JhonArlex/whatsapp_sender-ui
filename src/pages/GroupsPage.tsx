@@ -62,7 +62,7 @@ export default function GroupsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Grupos</h1>
+          <h1 className="text-3xl font-bold">Grupos <span className="text-lg font-normal text-muted-foreground">({groups.length})</span></h1>
           <p className="text-muted-foreground">
             Grupos de WhatsApp sincronizados desde Evolution
             {selectedGroups.length > 0 && (
