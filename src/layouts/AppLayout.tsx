@@ -9,7 +9,6 @@ const navItems = [
   { path: "/groups", label: "Grupos", icon: "👥" },
   { path: "/templates", label: "Plantillas", icon: "📝" },
   { path: "/jobs", label: "Jobs", icon: "📨" },
-  { path: "/messages", label: "Mensajes", icon: "💬" },
 ];
 
 // Versión del deploy — actualizar al hacer deploy
