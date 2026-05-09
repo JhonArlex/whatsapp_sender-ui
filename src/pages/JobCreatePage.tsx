@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { groupsApi, jobsApi } from "../lib/api";
+import { groupsApi, jobsApi, templatesApi } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -33,10 +33,13 @@ export default function JobCreatePage() {
   const [jobName, setJobName] = useState("");
   const [messageText, setMessageText] = useState("");
   const [error, setError] = useState("");
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     groupsApi.list().then((res) => setGroups(res.data.groups)).catch(() => {});
+    templatesApi.list().then((res) => setTemplates(res.data.templates)).catch(() => {});
   }, []);
 
   const toggleGroup = (g: Group) => {
@@ -195,6 +198,58 @@ export default function JobCreatePage() {
             <CardTitle>Configurar mensaje</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Selector de plantillas */}
+            <div className="space-y-2">
+              <Label>Seleccionar plantilla <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <div className="flex flex-wrap gap-2">
+                {templates.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No hay plantillas disponibles</p>
+                )}
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTemplate(t);
+                      setMessageText(t.content);
+                    }}
+                    className={`px-3 py-2 rounded-md text-sm border text-left transition-colors ${
+                      selectedTemplate?.id === t.id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted border-input"
+                    }`}
+                  >
+                    <span className="font-medium">{t.name}</span>
+                    {t.media_urls?.length > 0 && <span className="ml-1">🖼️</span>}
+                    {t.link_url && <span className="ml-1">🔗</span>}
+                    <p className="text-xs opacity-70 mt-0.5 max-w-[200px] truncate">{t.content}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview de la plantilla seleccionada */}
+            {selectedTemplate && (selectedTemplate.media_urls?.length > 0 || selectedTemplate.link_url) && (
+              <div className="rounded-md bg-muted p-3 space-y-1 text-sm">
+                {selectedTemplate.media_urls?.length > 0 && (
+                  <div className="flex gap-1 overflow-x-auto">
+                    {selectedTemplate.media_urls.map((url: string, i: number) => (
+                      <img
+                        key={i}
+                        src={url.startsWith("http") ? url : (url.startsWith("/api/") ? url : "/api/v1/message-templates/media/" + url.replace(/^\//, ""))}
+                        alt=""
+                        className="h-16 w-16 object-cover rounded-md shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ))}
+                  </div>
+                )}
+                {selectedTemplate.link_url && (
+                  <p className="text-xs text-blue-600 truncate">🔗 {selectedTemplate.link_url}</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="jobName">Nombre del job (opcional)</Label>
               <Input
