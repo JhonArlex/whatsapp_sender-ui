@@ -115,6 +115,8 @@ export const templatesApi = {
   update: (id: string, data: { name?: string; content?: string; msg_type?: string; media_url?: string; media_type?: string }) =>
     api.put(`/api/v1/message-templates/${id}`, data),
   delete: (id: string) => api.delete(`/api/v1/message-templates/${id}`),
+  test: (id: string, data: { instance_name: string; remote_jid: string }) =>
+    api.post(`/api/v1/message-templates/${id}/test`, data),
   uploadMedia: (files: File[]) => {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { templatesApi } from "../lib/api";
+import { templatesApi, instancesApi } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -34,6 +34,9 @@ export default function TemplatesPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [error, setError] = useState("");
+  const [testModal, setTestModal] = useState<{template: Template | null; instances: any[]; instance: string; number: string; sending: boolean; result: string}>({
+    template: null, instances: [], instance: "", number: "", sending: false, result: ""
+  });
 
   const load = () => {
     templatesApi
@@ -160,6 +163,40 @@ export default function TemplatesPage() {
 
   // ── Delete ─────────────────────────────────────────────────────
 
+  const openTest = async (t: Template) => {
+    setError("");
+    try {
+      const res = await instancesApi.list();
+      const insts = res.data.instances || [];
+      setTestModal({
+        template: t,
+        instances: insts,
+        instance: insts.length > 0 ? insts[0].instance_name : "",
+        number: insts.length > 0 ? (insts[0].owner_jid || "") : "",
+        sending: false,
+        result: "",
+      });
+    } catch {
+      setTestModal({ template: t, instances: [], instance: "", number: "", sending: false, result: "Error al cargar instancias" });
+    }
+  };
+
+  const closeTest = () => {
+    setTestModal({ template: null, instances: [], instance: "", number: "", sending: false, result: "" });
+  };
+
+  const sendTest = async () => {
+    const tm = testModal;
+    if (!tm.template || !tm.instance || !tm.number) return;
+    setTestModal({ ...tm, sending: true, result: "" });
+    try {
+      const res = await templatesApi.test(tm.template.id, { instance_name: tm.instance, remote_jid: tm.number });
+      setTestModal({ ...tm, sending: false, result: (res.data as any).message || "✅ Enviado" });
+    } catch (err: any) {
+      setTestModal({ ...tm, sending: false, result: err.response?.data?.detail || "Error al enviar" });
+    }
+  };
+
   const handleDelete = async (id: string, tname: string) => {
     if (!confirm(`¿Eliminar la plantilla "${tname}"?`)) return;
     try {
@@ -232,6 +269,7 @@ export default function TemplatesPage() {
               )}
               <div className="flex gap-2 pt-1">
                 <Button variant="outline" size="sm" onClick={() => openEdit(t)}>Editar</Button>
+                <Button variant="secondary" size="sm" onClick={() => openTest(t)}>▶ Probar</Button>
                 <Button variant="destructive" size="sm" onClick={() => handleDelete(t.id, t.name)}>Eliminar</Button>
               </div>
             </CardContent>
@@ -338,6 +376,63 @@ export default function TemplatesPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Test Modal */}
+      {testModal.template && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+            <h2 className="text-xl font-bold">▶ Probar plantilla</h2>
+            <p className="text-sm text-muted-foreground">
+              Enviando: <strong>{testModal.template.name}</strong>
+            </p>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Instancia</label>
+              <select
+                value={testModal.instance}
+                onChange={(e) => setTestModal({ ...testModal, instance: e.target.value })}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {testModal.instances.map((inst: any) => (
+                  <option key={inst.instance_name} value={inst.instance_name}>
+                    {inst.instance_name} ({inst.profile_name || "—"})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Número de destino
+                <span className="text-muted-foreground font-normal text-xs"> (con código de país, ej: 56912345678)</span>
+              </label>
+              <input
+                value={testModal.number}
+                onChange={(e) => setTestModal({ ...testModal, number: e.target.value })}
+                placeholder="56912345678"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            {testModal.result && (
+              <p className={`text-sm rounded p-2 ${
+                testModal.result.startsWith("✅") || testModal.result.startsWith("Enviado")
+                  ? "bg-green-50 text-green-700 border border-green-200"
+                  : "bg-red-50 text-red-700 border border-red-200"
+              }`}>
+                {testModal.result}
+              </p>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={closeTest}>Cerrar</Button>
+              <Button onClick={sendTest} disabled={testModal.sending || !testModal.instance || !testModal.number}>
+                {testModal.sending ? "Enviando..." : "Enviar prueba"}
+              </Button>
+            </div>
           </div>
         </div>
       )}
