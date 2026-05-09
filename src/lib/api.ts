@@ -110,11 +110,18 @@ export const jobsApi = {
 
 export const templatesApi = {
   list: () => api.get("/api/v1/message-templates"),
-  create: (data: { name: string; content: string; msg_type?: string }) =>
+  create: (data: { name: string; content: string; msg_type?: string; media_url?: string; media_type?: string }) =>
     api.post("/api/v1/message-templates", data),
-  update: (id: string, data: { name?: string; content?: string }) =>
+  update: (id: string, data: { name?: string; content?: string; msg_type?: string; media_url?: string; media_type?: string }) =>
     api.put(`/api/v1/message-templates/${id}`, data),
   delete: (id: string) => api.delete(`/api/v1/message-templates/${id}`),
+  uploadMedia: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post("/api/v1/message-templates/upload", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };
 
 export const messagesApi = {
