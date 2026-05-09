@@ -66,6 +66,7 @@ export default function App() {
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/jobs/new" element={<JobCreatePage />} />
             <Route path="/jobs/:id" element={<JobDetailPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/messages" element={<MessagesPage />} />
           </Route>
 
