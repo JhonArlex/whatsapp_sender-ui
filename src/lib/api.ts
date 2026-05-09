@@ -65,6 +65,8 @@ export const connectionsApi = {
   list: () => api.get("/api/v1/connections"),
   create: (data: { name: string; base_url: string; api_key: string }) =>
     api.post("/api/v1/connections", data),
+  update: (id: string, data: { name?: string; base_url?: string; api_key?: string }) =>
+    api.put(`/api/v1/connections/${id}`, data),
   delete: (id: string) => api.delete(`/api/v1/connections/${id}`),
   verify: (id: string) => api.post(`/api/v1/connections/${id}/verify`),
 };
