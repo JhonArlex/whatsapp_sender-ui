@@ -5,7 +5,6 @@ import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 
 const API_URL = import.meta.env.VITE_BULK_API_URL || "http://localhost:8010";
-const MEDIA_BASE = API_URL + "/api/v1/message-templates/media";
 
 interface Template {
   id: string;
@@ -67,7 +66,7 @@ export default function TemplatesPage() {
     setContent(t.content);
     setLinkUrl(t.link_url || "");
     setUploadedUrls(t.media_urls || []);
-    setPreviews((t.media_urls || []).map((u) => `${API_URL}${u}`));
+    setPreviews((t.media_urls || []).map((u) => imageUrl(u)));
     setError("");
     setModal("edit");
   };
@@ -102,13 +101,20 @@ export default function TemplatesPage() {
       setUploadedUrls((prev) => [...prev, ...newUrls]);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Error al subir imágenes");
-      // Remove failed previews
       setPreviews((prev) => prev.slice(0, prev.length - Array.from(files).length));
     } finally {
       setUploading(false);
-      // Reset file input so same files can be re-selected
       if (fileRef.current) fileRef.current.value = "";
     }
+  };
+
+  // Construye URL de imagen soportando formatos nuevos (/api/v1/...) y viejos (solo filename)
+  const imageUrl = (stored: string) => {
+    if (!stored) return "";
+    if (stored.startsWith("http") || stored.startsWith("/api/")) return `${API_URL}${stored}`;
+    // Backwards compat: si es solo filename, anteponer el path completo
+    const clean = stored.replace(/^\//, "");
+    return `${API_URL}/api/v1/message-templates/media/${clean}`;
   };
 
   const removeImage = (index: number) => {
@@ -202,7 +208,7 @@ export default function TemplatesPage() {
                   {t.media_urls.map((url, i) => (
                     <img
                       key={i}
-                      src={`${API_URL}${url}`}
+                      src={imageUrl(url)}
                       alt=""
                       className="h-20 w-20 object-cover rounded-md shrink-0"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}

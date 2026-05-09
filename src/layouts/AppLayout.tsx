@@ -13,7 +13,7 @@ const navItems = [
 ];
 
 // Versión del deploy — actualizar al hacer deploy
-const APP_VERSION = "v1.4.0";
+const APP_VERSION = "v1.4.1";
 const APP_CHANGES = [
   "➕ Editar conexiones Evolution",
   "🔍 Errores detallados al verificar conexión",
