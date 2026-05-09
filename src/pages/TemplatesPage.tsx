@@ -67,7 +67,7 @@ export default function TemplatesPage() {
     setContent(t.content);
     setLinkUrl(t.link_url || "");
     setUploadedUrls(t.media_urls || []);
-    setPreviews((t.media_urls || []).map((u) => u));
+    setPreviews((t.media_urls || []).map((u) => `${API_URL}${u}`));
     setError("");
     setModal("edit");
   };
@@ -98,7 +98,7 @@ export default function TemplatesPage() {
     setUploading(true);
     try {
       const res = await templatesApi.uploadMedia(Array.from(files));
-      const newUrls = res.data.files.map((f: any) => f.filename);
+      const newUrls = res.data.files.map((f: any) => f.url);
       setUploadedUrls((prev) => [...prev, ...newUrls]);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Error al subir imágenes");
@@ -202,7 +202,7 @@ export default function TemplatesPage() {
                   {t.media_urls.map((url, i) => (
                     <img
                       key={i}
-                      src={url}
+                      src={`${API_URL}${url}`}
                       alt=""
                       className="h-20 w-20 object-cover rounded-md shrink-0"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
