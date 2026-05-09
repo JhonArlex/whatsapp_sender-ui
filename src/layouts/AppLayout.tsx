@@ -11,6 +11,14 @@ const navItems = [
   { path: "/messages", label: "Mensajes", icon: "💬" },
 ];
 
+// Versión del deploy — actualizar al hacer deploy
+const APP_VERSION = "v1.2.0";
+const APP_CHANGES = [
+  "➕ Editar conexiones Evolution",
+  "🔍 Errores detallados al verificar conexión",
+  "🐛 Fix: Origin header en verificación Evolution",
+];
+
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -54,8 +62,22 @@ export default function AppLayout() {
             );
           })}
         </nav>
-        <div className="p-4 border-t">
-          <Button variant="ghost" size="sm" className="w-full" onClick={handleLogout}>
+
+        {/* Footer con versión y cambios aplicados */}
+        <div className="p-3 border-t mt-auto">
+          <div className="text-xs text-muted-foreground space-y-1">
+            <details>
+              <summary className="cursor-pointer hover:text-foreground font-medium">
+                {APP_VERSION}
+              </summary>
+              <ul className="mt-1 space-y-0.5 list-disc list-inside text-[11px] opacity-80">
+                {APP_CHANGES.map((change, i) => (
+                  <li key={i}>{change}</li>
+                ))}
+              </ul>
+            </details>
+          </div>
+          <Button variant="ghost" size="sm" className="w-full mt-2" onClick={handleLogout}>
             Cerrar sesión
           </Button>
         </div>
