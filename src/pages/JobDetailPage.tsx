@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { jobsApi } from "../lib/api";
+import { jobsApi, schedulesApi } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -51,7 +51,24 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<JobDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleType, setScheduleType] = useState("once");
+  const [runDate, setRunDate] = useState("");
+  const [runTime, setRunTime] = useState("");
+  const [daysOfWeek, setDaysOfWeek] = useState<string[]>([]);
+  const [intervalMin, setIntervalMin] = useState(60);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleResult, setScheduleResult] = useState("");
+  const [schedules, setSchedules] = useState<any[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+
+  const loadSchedules = async () => {
+    if (!id) return;
+    try {
+      const res = await schedulesApi.list();
+      setSchedules(res.data.schedules.filter((s: any) => s.job_id === id));
+    } catch {}
+  };
 
   const fetchJob = () => {
     if (!id) return;
@@ -66,6 +83,12 @@ export default function JobDetailPage() {
     fetchJob();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (showSchedule && id) {
+      (async () => { await loadSchedules(); })();
+    }
+  }, [showSchedule, id]);
 
   // WebSocket para progreso en vivo
   useEffect(() => {
@@ -157,6 +180,9 @@ export default function JobDetailPage() {
               Reintentar fallidos
             </Button>
           )}
+          <Button variant="secondary" onClick={() => setShowSchedule(!showSchedule)}>
+            {showSchedule ? "Cerrar" : "⏰ Programar"}
+          </Button>
         </div>
       </div>
 
@@ -213,6 +239,165 @@ export default function JobDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Schedule Section */}
+      {showSchedule && (
+        <Card className="border-blue-300">
+          <CardHeader>
+            <CardTitle>⏰ Programar este Job</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-1">Tipo de programación</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "once", label: "Una vez" },
+                  { value: "daily", label: "Diario" },
+                  { value: "weekly", label: "Semanal" },
+                  { value: "interval", label: "Cada X min" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setScheduleType(opt.value)}
+                    className={`px-3 py-2 rounded-md text-sm border transition-colors ${
+                      scheduleType === opt.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {scheduleType === "once" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Fecha y hora</label>
+                <input
+                  type="datetime-local"
+                  value={runDate}
+                  onChange={(e) => setRunDate(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+
+            {(scheduleType === "daily" || scheduleType === "weekly") && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Hora</label>
+                <input
+                  type="time"
+                  value={runTime}
+                  onChange={(e) => setRunTime(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+
+            {scheduleType === "weekly" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Días de la semana</label>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { value: "lun", label: "Lun" },
+                    { value: "mar", label: "Mar" },
+                    { value: "mie", label: "Mié" },
+                    { value: "jue", label: "Jue" },
+                    { value: "vie", label: "Vie" },
+                    { value: "sab", label: "Sáb" },
+                    { value: "dom", label: "Dom" },
+                  ].map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() =>
+                        setDaysOfWeek((prev) =>
+                          prev.includes(d.value)
+                            ? prev.filter((x) => x !== d.value)
+                            : [...prev, d.value]
+                        )
+                      }
+                      className={`px-2 py-1 rounded text-xs border transition-colors ${
+                        daysOfWeek.includes(d.value)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background hover:bg-muted"
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {scheduleType === "interval" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">
+                  Cada <input type="number" value={intervalMin} onChange={(e) => setIntervalMin(Number(e.target.value))} className="w-20 inline-block rounded border px-2 py-1 text-sm" /> minutos
+                </label>
+              </div>
+            )}
+
+            {scheduleResult && (
+              <p className={`text-sm rounded p-2 ${
+                scheduleResult.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+              }`}>{scheduleResult}</p>
+            )}
+
+            <Button
+              onClick={async () => {
+                setScheduleSaving(true);
+                setScheduleResult("");
+                try {
+                  const data: any = { job_id: job.id, schedule_type: scheduleType };
+                  if (scheduleType === "once") data.run_date = new Date(runDate).toISOString();
+                  if (scheduleType === "daily" || scheduleType === "weekly") data.run_time = runTime;
+                  if (scheduleType === "weekly") data.days_of_week = daysOfWeek;
+                  if (scheduleType === "interval") data.interval_minutes = intervalMin;
+                  await schedulesApi.create(data);
+                  setScheduleResult("✅ Job programado correctamente");
+                  setShowSchedule(false);
+                } catch (err: any) {
+                  setScheduleResult(err.response?.data?.detail || "Error al programar");
+                } finally {
+                  setScheduleSaving(false);
+                }
+              }}
+              disabled={scheduleSaving}
+            >
+              {scheduleSaving ? "Guardando..." : "Programar Job"}
+            </Button>
+
+            {/* Show existing schedules */}
+            {schedules.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm font-medium mb-2">Programaciones activas:</p>
+                {schedules.map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between text-sm bg-muted rounded p-2 mb-1">
+                    <span>
+                      {s.schedule_type === "once" && s.run_date ? new Date(s.run_date).toLocaleString() : ""}
+                      {s.schedule_type === "daily" && s.run_time ? `Diario a las ${s.run_time}` : ""}
+                      {s.schedule_type === "weekly" && s.run_time ? `Semanal ${(s.days_of_week || []).join(", ")} a las ${s.run_time}` : ""}
+                      {s.schedule_type === "interval" ? `Cada ${s.interval_minutes} min` : ""}
+                    </span>
+                    <button
+                      onClick={async () => {
+                        await schedulesApi.delete(s.id);
+                        setSchedules((prev: any[]) => prev.filter((x: any) => x.id !== s.id));
+                      }}
+                      className="text-red-500 hover:underline text-xs"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Group results */}
       <Card>

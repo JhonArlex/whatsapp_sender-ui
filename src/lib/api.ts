@@ -136,6 +136,23 @@ export const messagesApi = {
   resend: (id: string) => api.post(`/api/v1/messages/${id}/resend`),
 };
 
+export const schedulesApi = {
+  list: () => api.get("/api/v1/schedules"),
+  get: (id: string) => api.get(`/api/v1/schedules/${id}`),
+  create: (data: {
+    job_id: string;
+    schedule_type: string;
+    run_date?: string;
+    run_time?: string;
+    days_of_week?: string[];
+    interval_minutes?: number;
+    start_date?: string;
+    end_date?: string;
+  }) => api.post("/api/v1/schedules", data),
+  update: (id: string, data: any) => api.put(`/api/v1/schedules/${id}`, data),
+  delete: (id: string) => api.delete(`/api/v1/schedules/${id}`),
+};
+
 export const statsApi = {
   overview: () => api.get("/api/v1/stats/overview"),
   daily: () => api.get("/api/v1/stats/daily"),
