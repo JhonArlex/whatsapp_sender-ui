@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { groupsApi, jobsApi, templatesApi } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+
+const API_URL = (import.meta.env.VITE_BULK_API_URL || "");
 
 interface Group {
   id: string;
@@ -24,6 +26,25 @@ interface SelectedGroup {
   evolution_base_url: string;
 }
 
+interface ImagePayload {
+  media_base64: string;
+  media_mimetype: string;
+  file_name: string;
+}
+
+/** Convierte un blob a base64 (sin prefijo data:...) */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function JobCreatePage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -36,6 +57,10 @@ export default function JobCreatePage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // ── Imágenes ───────────────────────────────────────────────────────
+  const [selectedImages, setSelectedImages] = useState<ImagePayload[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   useEffect(() => {
     groupsApi.list().then((res) => setGroups(res.data.groups)).catch(() => {});
@@ -65,6 +90,52 @@ export default function JobCreatePage() {
     setSelected(new Map());
   };
 
+  // ── Descargar imágenes de la plantilla ─────────────────────────────
+  const loadTemplateImages = useCallback(async (tpl: any) => {
+    if (!tpl?.media_urls?.length) {
+      setSelectedImages([]);
+      return;
+    }
+
+    setLoadingImages(true);
+    const images: ImagePayload[] = [];
+
+    for (const url of tpl.media_urls) {
+      try {
+        const fullUrl = url.startsWith("http") ? url : `${API_URL}${url}`;
+        const response = await fetch(fullUrl, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("ws_access_token") || ""}`,
+          },
+        });
+        if (!response.ok) {
+          console.warn(`Error fetching image ${url}: HTTP ${response.status}`);
+          continue;
+        }
+        const blob = await response.blob();
+        const base64 = await blobToBase64(blob);
+        images.push({
+          media_base64: base64,
+          media_mimetype: blob.type || "image/jpeg",
+          file_name: url.split("/").pop() || "image.jpg",
+        });
+      } catch (err) {
+        console.error(`Error downloading image: ${url}`, err);
+      }
+    }
+
+    setSelectedImages(images);
+    setLoadingImages(false);
+  }, []);
+
+  // ── Seleccionar plantilla ──────────────────────────────────────────
+  const handleSelectTemplate = (t: any) => {
+    setSelectedTemplate(t);
+    setMessageText(t.content);
+    loadTemplateImages(t);
+  };
+
+  // ── Crear job ──────────────────────────────────────────────────────
   const handleCreate = async () => {
     if (selected.size === 0 || !messageText.trim()) return;
     setCreating(true);
@@ -78,11 +149,27 @@ export default function JobCreatePage() {
       evolution_base_url: g.evolution_base_url,
     }));
 
+    // Construir mensajes: si hay imágenes, enviar como media con texto como caption
+    // en la primera; si no, solo texto.
+    let messages: any[];
+
+    if (selectedImages.length > 0) {
+      messages = selectedImages.map((img, i) => ({
+        msg_type: "image",
+        content: i === 0 ? messageText : "",
+        media_base64: img.media_base64,
+        media_mimetype: img.media_mimetype,
+        file_name: img.file_name,
+      }));
+    } else {
+      messages = [{ msg_type: "text", content: messageText }];
+    }
+
     try {
       const res = await jobsApi.create({
         name: jobName || `Job ${new Date().toLocaleString()}`,
         groups: selectedGroups,
-        messages: [{ msg_type: "text", content: messageText }],
+        messages,
       });
       navigate(`/jobs/${res.data.id}`);
     } catch (err: any) {
@@ -99,6 +186,7 @@ export default function JobCreatePage() {
       g.subject?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // ── Render ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
@@ -209,10 +297,7 @@ export default function JobCreatePage() {
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => {
-                      setSelectedTemplate(t);
-                      setMessageText(t.content);
-                    }}
+                    onClick={() => handleSelectTemplate(t)}
                     className={`px-3 py-2 rounded-md text-sm border text-left transition-colors ${
                       selectedTemplate?.id === t.id
                         ? "bg-primary text-primary-foreground border-primary"
@@ -247,6 +332,18 @@ export default function JobCreatePage() {
                 {selectedTemplate.link_url && (
                   <p className="text-xs text-blue-600 truncate">🔗 {selectedTemplate.link_url}</p>
                 )}
+
+                {/* Estado de carga de imágenes */}
+                {loadingImages && (
+                  <p className="text-xs text-muted-foreground animate-pulse">
+                    ⏳ Cargando imágenes…
+                  </p>
+                )}
+                {!loadingImages && selectedImages.length > 0 && (
+                  <p className="text-xs text-green-600">
+                    ✅ {selectedImages.length} imagen(es) lista(s) para enviar
+                  </p>
+                )}
               </div>
             )}
 
@@ -269,6 +366,11 @@ export default function JobCreatePage() {
                 onChange={(e) => setMessageText(e.target.value)}
                 required
               />
+              {selectedImages.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  📷 El texto será el caption de la primera imagen
+                </p>
+              )}
             </div>
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(1)}>
@@ -296,6 +398,11 @@ export default function JobCreatePage() {
               <p>
                 <strong>Grupos:</strong> {selected.size}
               </p>
+              {selectedImages.length > 0 && (
+                <p>
+                  <strong>Imágenes:</strong> {selectedImages.length}
+                </p>
+              )}
               <p>
                 <strong>Mensaje:</strong> {messageText.slice(0, 100)}
                 {messageText.length > 100 ? "..." : ""}
@@ -312,8 +419,12 @@ export default function JobCreatePage() {
               <Button variant="outline" onClick={() => setStep(2)}>
                 Atrás
               </Button>
-              <Button onClick={handleCreate} disabled={creating}>
-                {creating ? "Creando..." : "Iniciar envío"}
+              <Button onClick={handleCreate} disabled={creating || loadingImages}>
+                {loadingImages
+                  ? "Cargando imágenes…"
+                  : creating
+                    ? "Creando…"
+                    : "Iniciar envío"}
               </Button>
             </div>
           </CardContent>
