@@ -32,7 +32,6 @@ interface ImagePayload {
   file_name: string;
 }
 
-/** Convierte un blob a base64 (sin prefijo data:...) */
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -58,7 +57,6 @@ export default function JobCreatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // ── Imágenes ───────────────────────────────────────────────────────
   const [selectedImages, setSelectedImages] = useState<ImagePayload[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
 
@@ -90,7 +88,6 @@ export default function JobCreatePage() {
     setSelected(new Map());
   };
 
-  // ── Descargar imágenes de la plantilla ─────────────────────────────
   const loadTemplateImages = useCallback(async (tpl: any) => {
     if (!tpl?.media_urls?.length) {
       setSelectedImages([]);
@@ -128,14 +125,12 @@ export default function JobCreatePage() {
     setLoadingImages(false);
   }, []);
 
-  // ── Seleccionar plantilla ──────────────────────────────────────────
   const handleSelectTemplate = (t: any) => {
     setSelectedTemplate(t);
     setMessageText(t.content);
     loadTemplateImages(t);
   };
 
-  // ── Crear job ──────────────────────────────────────────────────────
   const handleCreate = async () => {
     if (selected.size === 0 || !messageText.trim()) return;
     setCreating(true);
@@ -149,8 +144,6 @@ export default function JobCreatePage() {
       evolution_base_url: g.evolution_base_url,
     }));
 
-    // Construir mensajes: si hay imágenes, enviar como media con texto como caption
-    // en la primera; si no, solo texto.
     let messages: any[];
 
     if (selectedImages.length > 0) {
@@ -186,18 +179,17 @@ export default function JobCreatePage() {
       g.subject?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ── Render ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold">Nuevo Job</h1>
-        <p className="text-muted-foreground">Crea un envío masivo de mensajes</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Nuevo Job</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Crea un envío masivo de mensajes</p>
       </div>
 
       {/* Steps indicator */}
-      <div className="flex gap-2 text-sm">
+      <div className="flex gap-2 text-xs md:text-sm">
         <span className={`font-semibold ${step >= 1 ? "text-primary" : "text-muted"}`}>
-          1. Seleccionar grupos
+          1. Grupos
         </span>
         <span className="text-muted-foreground">→</span>
         <span className={`font-semibold ${step >= 2 ? "text-primary" : "text-muted"}`}>
@@ -236,7 +228,7 @@ export default function JobCreatePage() {
                 ✕ Deseleccionar todos
               </button>
             </div>
-            <div className="max-h-96 overflow-y-auto space-y-1 border rounded-md p-2">
+            <div className="max-h-72 md:max-h-96 overflow-y-auto space-y-1 border rounded-md p-2">
               {filteredGroups.map((g) => (
                 <div
                   key={g.id}
@@ -252,10 +244,10 @@ export default function JobCreatePage() {
                     className="shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                    <p className="text-xs md:text-sm font-medium truncate">
                       {g.push_name || g.subject || "Sin nombre"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-[11px] md:text-xs text-muted-foreground truncate">
                       {g.instance_name} · {g.remote_jid}
                     </p>
                   </div>
@@ -266,13 +258,10 @@ export default function JobCreatePage() {
               )}
             </div>
             <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 {selected.size} grupos seleccionados
               </p>
-              <Button
-                disabled={selected.size === 0}
-                onClick={() => setStep(2)}
-              >
+              <Button disabled={selected.size === 0} onClick={() => setStep(2)}>
                 Siguiente
               </Button>
             </div>
@@ -286,7 +275,6 @@ export default function JobCreatePage() {
             <CardTitle>Configurar mensaje</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Selector de plantillas */}
             <div className="space-y-2">
               <Label>Seleccionar plantilla <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <div className="flex flex-wrap gap-2">
@@ -298,7 +286,7 @@ export default function JobCreatePage() {
                     key={t.id}
                     type="button"
                     onClick={() => handleSelectTemplate(t)}
-                    className={`px-3 py-2 rounded-md text-sm border text-left transition-colors ${
+                    className={`px-3 py-2 rounded-md text-xs md:text-sm border text-left transition-colors ${
                       selectedTemplate?.id === t.id
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background hover:bg-muted border-input"
@@ -307,15 +295,14 @@ export default function JobCreatePage() {
                     <span className="font-medium">{t.name}</span>
                     {t.media_urls?.length > 0 && <span className="ml-1">🖼️</span>}
                     {t.link_url && <span className="ml-1">🔗</span>}
-                    <p className="text-xs opacity-70 mt-0.5 max-w-[200px] truncate">{t.content}</p>
+                    <p className="text-[11px] md:text-xs opacity-70 mt-0.5 max-w-[180px] md:max-w-[200px] truncate">{t.content}</p>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Preview de la plantilla seleccionada */}
             {selectedTemplate && (selectedTemplate.media_urls?.length > 0 || selectedTemplate.link_url) && (
-              <div className="rounded-md bg-muted p-3 space-y-1 text-sm">
+              <div className="rounded-md bg-muted p-2 md:p-3 space-y-1 text-xs md:text-sm">
                 {selectedTemplate.media_urls?.length > 0 && (
                   <div className="flex gap-1 overflow-x-auto">
                     {selectedTemplate.media_urls.map((url: string, i: number) => (
@@ -323,7 +310,7 @@ export default function JobCreatePage() {
                         key={i}
                         src={url.startsWith("http") ? url : (url.startsWith("/api/") ? url : "/api/v1/message-templates/media/" + url.replace(/^\//, ""))}
                         alt=""
-                        className="h-16 w-16 object-cover rounded-md shrink-0"
+                        className="h-12 md:h-16 w-12 md:w-16 object-cover rounded-md shrink-0"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
                     ))}
@@ -332,47 +319,34 @@ export default function JobCreatePage() {
                 {selectedTemplate.link_url && (
                   <p className="text-xs text-blue-600 truncate">🔗 {selectedTemplate.link_url}</p>
                 )}
-
-                {/* Estado de carga de imágenes */}
                 {loadingImages && (
-                  <p className="text-xs text-muted-foreground animate-pulse">
-                    ⏳ Cargando imágenes…
-                  </p>
+                  <p className="text-xs text-muted-foreground animate-pulse">⏳ Cargando imágenes…</p>
                 )}
                 {!loadingImages && selectedImages.length > 0 && (
-                  <p className="text-xs text-green-600">
-                    ✅ {selectedImages.length} imagen(es) lista(s) para enviar
-                  </p>
+                  <p className="text-xs text-green-600">✅ {selectedImages.length} imagen(es) lista(s) para enviar</p>
                 )}
               </div>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="jobName">Nombre del job (opcional)</Label>
-              <Input
-                id="jobName"
-                placeholder="Ej: Promo mayo 2024"
-                value={jobName}
-                onChange={(e) => setJobName(e.target.value)}
-              />
+              <Input id="jobName" placeholder="Ej: Promo mayo 2024" value={jobName} onChange={(e) => setJobName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="messageText">Mensaje de texto</Label>
               <textarea
                 id="messageText"
-                className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                className="flex min-h-[100px] md:min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                 placeholder="Escribe el mensaje que se enviará a los grupos..."
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 required
               />
               {selectedImages.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  📷 El texto será el caption de la primera imagen
-                </p>
+                <p className="text-xs text-muted-foreground">📷 El texto será el caption de la primera imagen</p>
               )}
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>
                 Atrás
               </Button>
@@ -391,7 +365,7 @@ export default function JobCreatePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="rounded-md bg-muted p-4 space-y-2 text-sm">
+            <div className="rounded-md bg-muted p-3 md:p-4 space-y-2 text-xs md:text-sm">
               <p>
                 <strong>Nombre:</strong> {jobName || "(sin nombre)"}
               </p>
@@ -407,15 +381,15 @@ export default function JobCreatePage() {
                 <strong>Mensaje:</strong> {messageText.slice(0, 100)}
                 {messageText.length > 100 ? "..." : ""}
               </p>
-              <div className="max-h-40 overflow-y-auto space-y-1">
+              <div className="max-h-32 md:max-h-40 overflow-y-auto space-y-1">
                 {Array.from(selected.values()).map((g) => (
-                  <p key={g.id} className="text-xs text-muted-foreground">
+                  <p key={g.id} className="text-[11px] md:text-xs text-muted-foreground">
                     · {g.push_name || g.subject} ({g.instance_name})
                   </p>
                 ))}
               </div>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <Button variant="outline" onClick={() => setStep(2)}>
                 Atrás
               </Button>

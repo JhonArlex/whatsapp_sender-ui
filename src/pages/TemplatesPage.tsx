@@ -50,8 +50,6 @@ export default function TemplatesPage() {
     load();
   }, []);
 
-  // ── Modal helpers ──────────────────────────────────────────────
-
   const openCreate = () => {
     setEditingId(null);
     setName("");
@@ -77,26 +75,21 @@ export default function TemplatesPage() {
   const closeModal = () => {
     setModal(null);
     setEditingId(null);
-    // Limpiar object URLs
     previews.forEach((p) => {
       if (p.startsWith("blob:")) URL.revokeObjectURL(p);
     });
   };
 
-  // ── Multi-file upload ──────────────────────────────────────────
-
   const handleFilesSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Show local previews immediately
     const newPreviews: string[] = [];
     for (const f of Array.from(files)) {
       newPreviews.push(URL.createObjectURL(f));
     }
     setPreviews((prev) => [...prev, ...newPreviews]);
 
-    // Upload each file
     setUploading(true);
     try {
       const res = await templatesApi.uploadMedia(Array.from(files));
@@ -111,14 +104,10 @@ export default function TemplatesPage() {
     }
   };
 
-  // Construye URL de imagen soportando formatos nuevos (/api/v1/...) y viejos (solo filename)
   const imageUrl = (stored: string) => {
     if (!stored) return "";
-    // Si ya es URL absoluta, usarla directamente
     if (stored.startsWith("http")) return stored;
-    // Si empieza con /api/, es ruta relativa al mismo origen (nginx proxy)
     if (stored.startsWith("/api/")) return stored;
-    // Backwards compat: si es solo filename (templates viejos)
     const clean = stored.replace(/^\//, "");
     return `/api/v1/message-templates/media/${clean}`;
   };
@@ -129,8 +118,6 @@ export default function TemplatesPage() {
     if (prevToRemove?.startsWith("blob:")) URL.revokeObjectURL(prevToRemove);
     setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
-
-  // ── Submit ─────────────────────────────────────────────────────
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,8 +147,6 @@ export default function TemplatesPage() {
       setError(err.response?.data?.detail || "Error al guardar");
     }
   };
-
-  // ── Delete ─────────────────────────────────────────────────────
 
   const openTest = async (t: Template) => {
     setError("");
@@ -205,16 +190,14 @@ export default function TemplatesPage() {
     } catch {}
   };
 
-  // ── Render ─────────────────────────────────────────────────────
-
   if (loading) return <div className="p-8 text-center text-muted-foreground">Cargando...</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-3xl font-bold">Plantillas de mensajes</h1>
-          <p className="text-muted-foreground">Crea plantillas con texto, imágenes y enlaces</p>
+          <h1 className="text-2xl md:text-3xl font-bold">Plantillas de mensajes</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Crea plantillas con texto, imágenes y enlaces</p>
         </div>
         <Button onClick={openCreate}>Nueva plantilla</Button>
       </div>
@@ -222,35 +205,35 @@ export default function TemplatesPage() {
       {templates.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            <p className="text-lg mb-2">No hay plantillas</p>
-            <p>Crea tu primera plantilla de mensaje</p>
+            <p className="text-base md:text-lg mb-2">No hay plantillas</p>
+            <p className="text-sm">Crea tu primera plantilla de mensaje</p>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2">
         {templates.map((t) => (
           <Card key={t.id}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                {t.name}
+            <CardHeader className="pb-1 md:pb-2 px-3 md:px-6 pt-3 md:pt-6">
+              <CardTitle className="text-sm md:text-base flex items-center gap-2">
+                <span className="truncate">{t.name}</span>
                 {(t.media_urls?.length > 0 || t.link_url) && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground shrink-0">
                     {t.media_urls?.length > 0 && `🖼️${t.media_urls.length} `}
                     {t.link_url && "🔗"}
                   </span>
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 px-3 md:px-6 pb-3 md:pb-6">
               {t.media_urls && t.media_urls.length > 0 && (
-                <div className="flex gap-1 overflow-x-auto">
+                <div className="flex gap-1 overflow-x-auto pb-1">
                   {t.media_urls.map((url, i) => (
                     <img
                       key={i}
                       src={imageUrl(url)}
                       alt=""
-                      className="h-20 w-20 object-cover rounded-md shrink-0"
+                      className="h-16 md:h-20 w-16 md:w-20 object-cover rounded-md shrink-0"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
                   ))}
@@ -259,15 +242,15 @@ export default function TemplatesPage() {
               {t.link_url && (
                 <p className="text-xs text-blue-600 truncate">🔗 {t.link_url}</p>
               )}
-              <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-3">
+              <p className="text-xs md:text-sm text-muted-foreground whitespace-pre-line line-clamp-3">
                 {t.content}
               </p>
               {t.updated_at && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] md:text-xs text-muted-foreground">
                   Modificado: {new Date(t.updated_at).toLocaleString()}
                 </p>
               )}
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 flex-wrap pt-1">
                 <Button variant="outline" size="sm" onClick={() => openEdit(t)}>Editar</Button>
                 <Button variant="secondary" size="sm" onClick={() => openTest(t)}>▶ Probar</Button>
                 <Button variant="destructive" size="sm" onClick={() => handleDelete(t.id, t.name)}>Eliminar</Button>
@@ -279,11 +262,16 @@ export default function TemplatesPage() {
 
       {/* ── MODAL ── */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50">
+          <div className="bg-white rounded-t-xl md:rounded-lg shadow-xl w-full md:max-w-lg md:mx-4 max-h-[90vh] overflow-y-auto md:max-h-[85vh]">
             <form onSubmit={handleSubmit}>
-              <div className="p-6 space-y-4">
-                <h2 className="text-xl font-bold">
+              {/* Barra de arrastre visual en mobile */}
+              <div className="md:hidden flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-gray-300" />
+              </div>
+
+              <div className="p-4 md:p-6 space-y-4">
+                <h2 className="text-lg md:text-xl font-bold">
                   {editingId ? "Editar plantilla" : "Nueva plantilla"}
                 </h2>
 
@@ -291,18 +279,11 @@ export default function TemplatesPage() {
                   <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">{error}</p>
                 )}
 
-                {/* Name */}
                 <div>
                   <label className="text-sm font-medium block mb-1">Nombre</label>
-                  <Input
-                    placeholder="Ej: Promo mayo"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
+                  <Input placeholder="Ej: Promo mayo" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
 
-                {/* Content */}
                 <div>
                   <label className="text-sm font-medium block mb-1">
                     Mensaje <span className="text-muted-foreground font-normal">(requerido)</span>
@@ -319,19 +300,13 @@ export default function TemplatesPage() {
                   </p>
                 </div>
 
-                {/* Link (optional) */}
                 <div>
                   <label className="text-sm font-medium block mb-1">
                     Enlace <span className="text-muted-foreground font-normal">(opcional)</span>
                   </label>
-                  <Input
-                    placeholder="https://ejemplo.com/oferta"
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                  />
+                  <Input placeholder="https://ejemplo.com/oferta" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} />
                 </div>
 
-                {/* Images (multiple, optional) */}
                 <div>
                   <label className="text-sm font-medium block mb-1">
                     Imágenes <span className="text-muted-foreground font-normal">(opcional, máx 10)</span>
@@ -345,13 +320,11 @@ export default function TemplatesPage() {
                     className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                   />
                   {uploading && <p className="text-xs text-muted-foreground mt-1">Subiendo...</p>}
-
-                  {/* Preview grid */}
                   {previews.length > 0 && (
                     <div className="mt-2 grid grid-cols-4 gap-2">
                       {previews.map((p, i) => (
                         <div key={i} className="relative group">
-                          <img src={p} alt="" className="w-full h-20 object-cover rounded-md" />
+                          <img src={p} alt="" className="w-full h-16 md:h-20 object-cover rounded-md" />
                           <button
                             type="button"
                             onClick={() => removeImage(i)}
@@ -366,8 +339,7 @@ export default function TemplatesPage() {
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="px-6 pb-6 flex gap-2 justify-end border-t pt-4">
+              <div className="px-4 md:px-6 pb-4 md:pb-6 flex gap-2 justify-end border-t pt-4">
                 <Button type="button" variant="outline" onClick={closeModal}>
                   Cancelar
                 </Button>
@@ -382,9 +354,14 @@ export default function TemplatesPage() {
 
       {/* Test Modal */}
       {testModal.template && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
-            <h2 className="text-xl font-bold">▶ Probar plantilla</h2>
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 p-0 md:p-4">
+          <div className="bg-white rounded-t-xl md:rounded-lg shadow-xl w-full md:max-w-md md:mx-4 max-h-[80vh] overflow-y-auto p-4 md:p-6 space-y-4">
+            {/* Barra de arrastre visual en mobile */}
+            <div className="md:hidden flex justify-center -mt-2 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-300" />
+            </div>
+
+            <h2 className="text-lg md:text-xl font-bold">▶ Probar plantilla</h2>
             <p className="text-sm text-muted-foreground">
               Enviando: <strong>{testModal.template.name}</strong>
             </p>
@@ -407,7 +384,7 @@ export default function TemplatesPage() {
             <div>
               <label className="text-sm font-medium block mb-1">
                 Número de destino
-                <span className="text-muted-foreground font-normal text-xs"> (con código de país, ej: 56912345678)</span>
+                <span className="text-muted-foreground font-normal text-xs"> (con código de país)</span>
               </label>
               <input
                 value={testModal.number}

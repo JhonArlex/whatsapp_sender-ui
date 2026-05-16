@@ -33,16 +33,34 @@ interface JobDetail {
   }>;
 }
 
-function statusColor(status: string): string {
+function statusBadge(status: string): React.ReactNode {
   switch (status) {
     case "ok":
-      return "bg-green-500";
+      return <Badge className="bg-green-500">OK</Badge>;
     case "sending":
-      return "bg-blue-500";
+      return <Badge className="bg-blue-500">Enviando</Badge>;
     case "error":
-      return "bg-red-500";
+      return <Badge className="bg-red-500">Error</Badge>;
     default:
-      return "bg-gray-400";
+      return <Badge>{status}</Badge>;
+  }
+}
+
+function statusColor(status: string): string {
+  switch (status) {
+    case "ok": return "bg-green-50 border-green-200";
+    case "sending": return "bg-blue-50 border-blue-200";
+    case "error": return "bg-red-50 border-red-200";
+    default: return "";
+  }
+}
+
+function statusDot(status: string): string {
+  switch (status) {
+    case "ok": return "🟢";
+    case "sending": return "🔄";
+    case "error": return "🔴";
+    default: return "⚪";
   }
 }
 
@@ -110,7 +128,6 @@ export default function JobDetailPage() {
     };
 
     ws.onopen = () => {
-      // Keep alive
       const ping = setInterval(() => ws.send("ping"), 30000);
       ws.addEventListener("close", () => clearInterval(ping));
     };
@@ -159,17 +176,21 @@ export default function JobDetailPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link to="/jobs" className="text-sm text-primary hover:underline">
               ← Jobs
             </Link>
           </div>
-          <h1 className="text-2xl font-bold mt-1">{job.name || job.id.slice(0, 8)}</h1>
-          <p className="text-sm text-muted-foreground font-mono">ID: {job.id}</p>
+          <h1 className="text-xl md:text-2xl font-bold mt-1 break-words">
+            {job.name || job.id.slice(0, 8)}
+          </h1>
+          <p className="text-xs md:text-sm text-muted-foreground font-mono break-all">
+            ID: {job.id}
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap shrink-0">
           {job.status === "running" && (
             <Button variant="destructive" onClick={handleCancel}>
               Cancelar
@@ -205,37 +226,37 @@ export default function JobDetailPage() {
       )}
 
       {/* Stats */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Estado</CardTitle>
+          <CardHeader className="pb-1 md:pb-2 px-3 md:px-6 pt-3 md:pt-6">
+            <CardTitle className="text-xs md:text-sm">Estado</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
             <Badge>{job.status}</Badge>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Total grupos</CardTitle>
+          <CardHeader className="pb-1 md:pb-2 px-3 md:px-6 pt-3 md:pt-6">
+            <CardTitle className="text-xs md:text-sm">Total grupos</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{job.total_groups}</div>
+          <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+            <div className="text-xl md:text-2xl font-bold">{job.total_groups}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-green-600">Éxitos</CardTitle>
+          <CardHeader className="pb-1 md:pb-2 px-3 md:px-6 pt-3 md:pt-6">
+            <CardTitle className="text-xs md:text-sm text-green-600">Éxitos</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{job.success_count}</div>
+          <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+            <div className="text-xl md:text-2xl font-bold text-green-600">{job.success_count}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-red-600">Fallos</CardTitle>
+          <CardHeader className="pb-1 md:pb-2 px-3 md:px-6 pt-3 md:pt-6">
+            <CardTitle className="text-xs md:text-sm text-red-600">Fallos</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{job.fail_count}</div>
+          <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+            <div className="text-xl md:text-2xl font-bold text-red-600">{job.fail_count}</div>
           </CardContent>
         </Card>
       </div>
@@ -375,8 +396,8 @@ export default function JobDetailPage() {
               <div className="mt-4 pt-4 border-t">
                 <p className="text-sm font-medium mb-2">Programaciones activas:</p>
                 {schedules.map((s: any) => (
-                  <div key={s.id} className="flex items-center justify-between text-sm bg-muted rounded p-2 mb-1">
-                    <span>
+                  <div key={s.id} className="flex items-center justify-between text-sm bg-muted rounded p-2 mb-1 gap-2">
+                    <span className="text-xs md:text-sm">
                       {s.schedule_type === "once" && s.run_date ? new Date(s.run_date).toLocaleString() : ""}
                       {s.schedule_type === "daily" && s.run_time ? `Diario a las ${s.run_time}` : ""}
                       {s.schedule_type === "weekly" && s.run_time ? `Semanal ${(s.days_of_week || []).join(", ")} a las ${s.run_time}` : ""}
@@ -387,7 +408,7 @@ export default function JobDetailPage() {
                         await schedulesApi.delete(s.id);
                         setSchedules((prev: any[]) => prev.filter((x: any) => x.id !== s.id));
                       }}
-                      className="text-red-500 hover:underline text-xs"
+                      className="text-red-500 hover:underline text-xs shrink-0"
                     >
                       Eliminar
                     </button>
@@ -408,32 +429,63 @@ export default function JobDetailPage() {
           {job.groups.length === 0 ? (
             <p className="text-muted-foreground">Sin grupos</p>
           ) : (
-            <div className="rounded-md border max-h-96 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-2 text-left">Grupo</th>
-                    <th className="p-2 text-left">Instancia</th>
-                    <th className="p-2 text-left">Estado</th>
-                    <th className="p-2 text-left">Detalle</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {job.groups.map((g) => (
-                    <tr key={g.id} className="border-b hover:bg-muted/50">
-                      <td className="p-2 font-medium">{g.push_name || g.remote_jid}</td>
-                      <td className="p-2 text-muted-foreground">{g.instance_name}</td>
-                      <td className="p-2">
-                        <Badge className={statusColor(g.status)}>{g.status}</Badge>
-                      </td>
-                      <td className="p-2 text-xs text-muted-foreground max-w-[200px] truncate">
-                        {g.detail || "—"}
-                      </td>
+            <>
+              {/* ── Desktop: tabla ── */}
+              <div className="hidden md:block rounded-md border max-h-96 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-2 text-left">Grupo</th>
+                      <th className="p-2 text-left">Instancia</th>
+                      <th className="p-2 text-left">Estado</th>
+                      <th className="p-2 text-left">Detalle</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {job.groups.map((g) => (
+                      <tr key={g.id} className="border-b hover:bg-muted/50">
+                        <td className="p-2 font-medium">{g.push_name || g.remote_jid}</td>
+                        <td className="p-2 text-muted-foreground">{g.instance_name}</td>
+                        <td className="p-2">{statusBadge(g.status)}</td>
+                        <td className="p-2 text-xs text-muted-foreground max-w-[200px] truncate">
+                          {g.detail || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── Mobile: cards ── */}
+              <div className="md:hidden space-y-2">
+                {job.groups.map((g) => (
+                  <div
+                    key={g.id}
+                    className={`rounded-lg border p-3 ${statusColor(g.status)}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {g.push_name || g.remote_jid}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          📱 {g.instance_name}
+                        </p>
+                      </div>
+                      <span className="text-lg shrink-0">{statusDot(g.status)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {statusBadge(g.status)}
+                      {g.detail && (
+                        <span className="text-[11px] text-muted-foreground truncate">
+                          {g.detail}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

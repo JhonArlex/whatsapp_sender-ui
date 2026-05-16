@@ -15,7 +15,6 @@ interface Connection {
   created_at: string | null;
 }
 
-// Estado del modal de verificación (errores detallados)
 interface VerifyModal {
   open: boolean;
   title: string;
@@ -23,7 +22,6 @@ interface VerifyModal {
   type: "success" | "error" | "info";
 }
 
-// Conexión en modo edición
 interface EditingConnection {
   id: string;
   name: string;
@@ -36,16 +34,13 @@ export default function ConnectionsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
-  // Formulario de nueva conexión
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState("");
 
-  // Edición de conexión existente
   const [editing, setEditing] = useState<EditingConnection | null>(null);
 
-  // Modal de verificación
   const [verifyModal, setVerifyModal] = useState<VerifyModal>({
     open: false,
     title: "",
@@ -65,8 +60,6 @@ export default function ConnectionsPage() {
     loadConnections();
   }, []);
 
-  // ── Nueva conexión ────────────────────────────────────────────────
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -81,8 +74,6 @@ export default function ConnectionsPage() {
       setError(err.response?.data?.detail || "Error al crear conexión");
     }
   };
-
-  // ── Editar conexión ───────────────────────────────────────────────
 
   const startEditing = (conn: Connection) => {
     setEditing({
@@ -121,8 +112,6 @@ export default function ConnectionsPage() {
     }
   };
 
-  // ── Eliminar ──────────────────────────────────────────────────────
-
   const handleDelete = async (id: string) => {
     if (!confirm("¿Eliminar esta conexión?")) return;
     try {
@@ -131,13 +120,10 @@ export default function ConnectionsPage() {
     } catch {}
   };
 
-  // ── Verificar ─────────────────────────────────────────────────────
-
   const handleVerify = async (id: string) => {
     try {
       const res = await connectionsApi.verify(id);
       const data = res.data;
-
       if (data.ok) {
         setVerifyModal({
           open: true,
@@ -155,10 +141,7 @@ export default function ConnectionsPage() {
       }
       loadConnections();
     } catch (err: any) {
-      // El backend ahora devuelve HTTP 400 con detail descriptivo
-      const detail =
-        err.response?.data?.detail || "Error al conectar con el servidor";
-
+      const detail = err.response?.data?.detail || "Error al conectar con el servidor";
       setVerifyModal({
         open: true,
         title: "❌ No se pudo conectar",
@@ -168,13 +151,9 @@ export default function ConnectionsPage() {
     }
   };
 
-  // ── Utilidad ──────────────────────────────────────────────────────
-
   const closeVerifyModal = () => {
     setVerifyModal({ ...verifyModal, open: false });
   };
-
-  // ── Render ────────────────────────────────────────────────────────
 
   if (loading)
     return <div className="p-8 text-center text-muted-foreground">Cargando...</div>;
@@ -182,16 +161,16 @@ export default function ConnectionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-3xl font-bold">Conexiones Evolution</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold">Conexiones Evolution</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Gestiona tus servidores Evolution API
           </p>
         </div>
         <Button onClick={() => {
           setShowForm(!showForm);
-          setEditing(null); // cerrar edición si estaba abierta
+          setEditing(null);
         }}>
           {showForm ? "Cancelar" : "Nueva conexión"}
         </Button>
@@ -210,7 +189,7 @@ export default function ConnectionsPage() {
                   {error}
                 </p>
               )}
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-4 md:grid md:gap-4 md:grid-cols-3 md:space-y-0">
                 <div>
                   <label className="text-sm font-medium">Nombre</label>
                   <Input
@@ -240,7 +219,7 @@ export default function ConnectionsPage() {
                   />
                 </div>
               </div>
-              <Button type="submit">Guardar conexión</Button>
+              <Button type="submit" className="w-full sm:w-auto">Guardar conexión</Button>
             </form>
           </CardContent>
         </Card>
@@ -254,7 +233,7 @@ export default function ConnectionsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleUpdate} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-4 md:grid md:gap-4 md:grid-cols-3 md:space-y-0">
                 <div>
                   <label className="text-sm font-medium">Nombre</label>
                   <Input
@@ -279,12 +258,12 @@ export default function ConnectionsPage() {
                   <label className="text-sm font-medium">
                     API Key{" "}
                     <span className="text-xs text-muted-foreground">
-                      (dejar vacío para mantener la actual)
+                      (dejar vacío = no cambiar)
                     </span>
                   </label>
                   <Input
                     type="password"
-                    placeholder="•••••• (dejar vacío = no cambiar)"
+                    placeholder="••••••"
                     value={editing.api_key}
                     onChange={(e) =>
                       setEditing({ ...editing, api_key: e.target.value })
@@ -292,13 +271,9 @@ export default function ConnectionsPage() {
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button type="submit">Guardar cambios</Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={cancelEditing}
-                >
+                <Button type="button" variant="outline" onClick={cancelEditing}>
                   Cancelar
                 </Button>
               </div>
@@ -317,59 +292,49 @@ export default function ConnectionsPage() {
 
         {connections.map((conn) => (
           <Card key={conn.id}>
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{conn.name}</span>
-                  <Badge
-                    className={conn.is_active ? "bg-green-500" : "bg-gray-400"}
-                  >
-                    {conn.is_active ? "Activo" : "Inactivo"}
-                  </Badge>
+            <CardContent className="p-3 md:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm md:text-base">{conn.name}</span>
+                    <Badge
+                      className={conn.is_active ? "bg-green-500" : "bg-gray-400"}
+                    >
+                      {conn.is_active ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs md:text-sm text-muted-foreground break-all">{conn.base_url}</p>
+                  {conn.last_verified_at && (
+                    <p className="text-[11px] md:text-xs text-muted-foreground">
+                      Última verificación:{" "}
+                      {new Date(conn.last_verified_at).toLocaleString()}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground">{conn.base_url}</p>
-                {conn.last_verified_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Última verificación:{" "}
-                    {new Date(conn.last_verified_at).toLocaleString()}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => startEditing(conn)}
-                >
-                  Editar
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleVerify(conn.id)}
-                >
-                  Verificar
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDelete(conn.id)}
-                >
-                  Eliminar
-                </Button>
+                <div className="flex gap-2 flex-wrap shrink-0">
+                  <Button variant="outline" size="sm" onClick={() => startEditing(conn)}>
+                    Editar
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleVerify(conn.id)}>
+                    Verificar
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(conn.id)}>
+                    Eliminar
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Modal de verificación (errores detallados) */}
+      {/* Modal de verificación */}
       {verifyModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto max-h-[80vh] overflow-y-auto">
+            <div className="p-4 md:p-6">
               <h3
-                className={`text-lg font-bold mb-3 ${
+                className={`text-base md:text-lg font-bold mb-3 ${
                   verifyModal.type === "error"
                     ? "text-red-700"
                     : verifyModal.type === "success"
@@ -380,8 +345,7 @@ export default function ConnectionsPage() {
                 {verifyModal.title}
               </h3>
 
-              {/* Mensaje con soporte para saltos de línea */}
-              <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+              <div className="text-xs md:text-sm text-gray-700 whitespace-pre-line leading-relaxed">
                 {verifyModal.message}
               </div>
 

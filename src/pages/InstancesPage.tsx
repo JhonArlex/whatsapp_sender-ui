@@ -60,10 +60,10 @@ export default function InstancesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-3xl font-bold">Instancias</h1>
-          <p className="text-muted-foreground">Instancias de WhatsApp conectadas vía Evolution</p>
+          <h1 className="text-2xl md:text-3xl font-bold">Instancias</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Instancias de WhatsApp conectadas vía Evolution</p>
         </div>
         <Button onClick={handleSync} disabled={syncing}>
           {syncing ? "Sincronizando..." : "Sincronizar"}
@@ -78,25 +78,25 @@ export default function InstancesPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {instances.map((inst) => (
           <Card key={inst.id}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{inst.instance_name}</CardTitle>
-                <Badge className={statusColor(inst.status)}>
+            <CardHeader className="pb-1 md:pb-2 px-3 md:px-6 pt-3 md:pt-6">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-sm md:text-base truncate">{inst.instance_name}</CardTitle>
+                <Badge className={`shrink-0 ${statusColor(inst.status)}`}>
                   {inst.status}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="text-sm space-y-1">
-              <p>
+            <CardContent className="text-xs md:text-sm space-y-1 px-3 md:px-6 pb-3 md:pb-6">
+              <p className="truncate">
                 <span className="text-muted-foreground">Conexión:</span> {inst.connection_name}
               </p>
-              <p>
+              <p className="truncate">
                 <span className="text-muted-foreground">Perfil:</span> {inst.profile_name || "—"}
               </p>
-              <p>
+              <p className="truncate">
                 <span className="text-muted-foreground">Owner:</span> {inst.owner_jid || "—"}
               </p>
               <p>

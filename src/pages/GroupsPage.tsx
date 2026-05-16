@@ -60,7 +60,7 @@ export default function GroupsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-3xl font-bold">Grupos <span className="text-lg font-normal text-muted-foreground">({groups.length})</span></h1>
           <p className="text-muted-foreground">
@@ -72,7 +72,7 @@ export default function GroupsPage() {
             )}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {selectedGroups.length > 0 && (
             <Button
               onClick={() => {
@@ -123,56 +123,99 @@ export default function GroupsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="w-10 p-3 text-left">
-                  <input
-                    type="checkbox"
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelected(new Set(groups.map((g) => g.id)));
-                      } else {
-                        setSelected(new Set());
-                      }
-                    }}
-                    checked={selected.size === groups.length && groups.length > 0}
-                  />
-                </th>
-                <th className="p-3 text-left font-medium">Nombre</th>
-                <th className="p-3 text-left font-medium">Instancia</th>
-                <th className="p-3 text-left font-medium">Remote JID</th>
-                <th className="p-3 text-left font-medium">Sincronizado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((g) => (
-                <tr
+        <>
+          {/* ── Vista Desktop: tabla ── */}
+          <div className="hidden md:block rounded-md border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="w-10 p-3 text-left">
+                    <input
+                      type="checkbox"
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelected(new Set(groups.map((g) => g.id)));
+                        } else {
+                          setSelected(new Set());
+                        }
+                      }}
+                      checked={selected.size === groups.length && groups.length > 0}
+                    />
+                  </th>
+                  <th className="p-3 text-left font-medium">Nombre</th>
+                  <th className="p-3 text-left font-medium">Instancia</th>
+                  <th className="p-3 text-left font-medium">Remote JID</th>
+                  <th className="p-3 text-left font-medium">Sincronizado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((g) => (
+                  <tr
+                    key={g.id}
+                    className={`border-b hover:bg-muted/50 cursor-pointer ${
+                      selected.has(g.id) ? "bg-blue-50" : ""
+                    }`}
+                    onClick={() => toggleSelect(g.id)}
+                  >
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(g.id)}
+                        onChange={() => toggleSelect(g.id)}
+                      />
+                    </td>
+                    <td className="p-3 font-medium">{g.push_name || g.subject || "—"}</td>
+                    <td className="p-3 text-muted-foreground">{g.instance_name}</td>
+                    <td className="p-3 font-mono text-xs text-muted-foreground">{g.remote_jid}</td>
+                    <td className="p-3 text-xs text-muted-foreground">
+                      {g.synced_at ? new Date(g.synced_at).toLocaleString() : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── Vista Mobile: cards ── */}
+          <div className="md:hidden space-y-3">
+            {groups.map((g) => {
+              const isSel = selected.has(g.id);
+              return (
+                <div
                   key={g.id}
-                  className={`border-b hover:bg-muted/50 cursor-pointer ${
-                    selected.has(g.id) ? "bg-blue-50" : ""
+                  className={`rounded-lg border p-3 cursor-pointer transition-colors ${
+                    isSel ? "bg-blue-50 border-blue-300" : "bg-card hover:bg-muted/50"
                   }`}
                   onClick={() => toggleSelect(g.id)}
                 >
-                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
-                      checked={selected.has(g.id)}
+                      checked={isSel}
                       onChange={() => toggleSelect(g.id)}
+                      className="mt-1 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
                     />
-                  </td>
-                  <td className="p-3 font-medium">{g.push_name || g.subject || "—"}</td>
-                  <td className="p-3 text-muted-foreground">{g.instance_name}</td>
-                  <td className="p-3 font-mono text-xs text-muted-foreground">{g.remote_jid}</td>
-                  <td className="p-3 text-xs text-muted-foreground">
-                    {g.synced_at ? new Date(g.synced_at).toLocaleString() : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <p className="font-medium text-sm truncate">
+                        {g.push_name || g.subject || "—"}
+                      </p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>📱 {g.instance_name}</span>
+                        <span className="font-mono">{g.remote_jid}</span>
+                      </div>
+                      {g.synced_at && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Sinc: {new Date(g.synced_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

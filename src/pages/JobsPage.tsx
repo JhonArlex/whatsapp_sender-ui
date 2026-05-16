@@ -36,6 +36,18 @@ function statusBadge(status: string) {
   }
 }
 
+function statusIcon(status: string): string {
+  switch (status) {
+    case "pending": return "⏳";
+    case "running": return "🔄";
+    case "completed": return "✅";
+    case "completed_with_errors": return "⚠️";
+    case "cancelled": return "🚫";
+    case "error": return "❌";
+    default: return "❓";
+  }
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +73,7 @@ export default function JobsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-3xl font-bold">Jobs</h1>
           <p className="text-muted-foreground">Envíos masivos creados</p>
@@ -71,6 +83,7 @@ export default function JobsPage() {
         </Link>
       </div>
 
+      {/* Filtros */}
       <div className="flex flex-wrap gap-2">
         {["", "pending", "running", "completed", "completed_with_errors", "cancelled", "error"].map(
           (s) => (
@@ -80,7 +93,7 @@ export default function JobsPage() {
               size="sm"
               onClick={() => handleFilter(s)}
             >
-              {s === "" ? "Todos" : s}
+              {s === "" ? "Todos" : s.replace("_", " ")}
             </Button>
           )
         )}
@@ -95,46 +108,84 @@ export default function JobsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="p-3 text-left font-medium">Nombre</th>
-                <th className="p-3 text-left font-medium">Estado</th>
-                <th className="p-3 text-left font-medium">Progreso</th>
-                <th className="p-3 text-left font-medium">Éxitos</th>
-                <th className="p-3 text-left font-medium">Fallos</th>
-                <th className="p-3 text-left font-medium">Creado</th>
-                <th className="p-3 text-left font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((j) => (
-                <tr key={j.id} className="border-b hover:bg-muted/50">
-                  <td className="p-3 font-medium">{j.name || j.id.slice(0, 8)}</td>
-                  <td className="p-3">{statusBadge(j.status)}</td>
-                  <td className="p-3">
-                    {j.total_groups > 0
-                      ? `${j.processed_groups}/${j.total_groups}`
-                      : "—"}
-                  </td>
-                  <td className="p-3 text-green-600">{j.success_count}</td>
-                  <td className="p-3 text-red-600">{j.fail_count}</td>
-                  <td className="p-3 text-xs text-muted-foreground">
-                    {j.created_at ? new Date(j.created_at).toLocaleString() : "—"}
-                  </td>
-                  <td className="p-3">
-                    <Link to={`/jobs/${j.id}`}>
-                      <Button variant="ghost" size="sm">
-                        Ver
-                      </Button>
-                    </Link>
-                  </td>
+        <>
+          {/* ── Desktop: tabla ── */}
+          <div className="hidden md:block rounded-md border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="p-3 text-left font-medium">Nombre</th>
+                  <th className="p-3 text-left font-medium">Estado</th>
+                  <th className="p-3 text-left font-medium">Progreso</th>
+                  <th className="p-3 text-left font-medium">Éxitos</th>
+                  <th className="p-3 text-left font-medium">Fallos</th>
+                  <th className="p-3 text-left font-medium">Creado</th>
+                  <th className="p-3 text-left font-medium"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {jobs.map((j) => (
+                  <tr key={j.id} className="border-b hover:bg-muted/50">
+                    <td className="p-3 font-medium">{j.name || j.id.slice(0, 8)}</td>
+                    <td className="p-3">{statusBadge(j.status)}</td>
+                    <td className="p-3">
+                      {j.total_groups > 0
+                        ? `${j.processed_groups}/${j.total_groups}`
+                        : "—"}
+                    </td>
+                    <td className="p-3 text-green-600">{j.success_count}</td>
+                    <td className="p-3 text-red-600">{j.fail_count}</td>
+                    <td className="p-3 text-xs text-muted-foreground">
+                      {j.created_at ? new Date(j.created_at).toLocaleString() : "—"}
+                    </td>
+                    <td className="p-3">
+                      <Link to={`/jobs/${j.id}`}>
+                        <Button variant="ghost" size="sm">
+                          Ver
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── Mobile: cards ── */}
+          <div className="md:hidden space-y-3">
+            {jobs.map((j) => (
+              <Link key={j.id} to={`/jobs/${j.id}`}>
+                <Card className="hover:bg-muted/50 transition-colors">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm truncate">
+                        {j.name || j.id.slice(0, 8)}
+                      </span>
+                      <span className="text-lg shrink-0">{statusIcon(j.status)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {statusBadge(j.status)}
+                      {j.total_groups > 0 && (
+                        <span className="text-muted-foreground">
+                          {j.processed_groups}/{j.total_groups} grupos
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-4 text-xs">
+                      <span className="text-green-600">✅ {j.success_count}</span>
+                      <span className="text-red-600">❌ {j.fail_count}</span>
+                    </div>
+                    {j.created_at && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {new Date(j.created_at).toLocaleString()}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
