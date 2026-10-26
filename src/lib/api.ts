@@ -83,8 +83,10 @@ export const groupsApi = {
 };
 
 export const jobsApi = {
-  list: (params?: { status?: string; page?: number; limit?: number }) =>
+  list: (params?: { status?: string; view?: "active" | "history" | "all"; page?: number; limit?: number }) =>
     api.get("/api/v1/jobs", { params }),
+  history: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get("/api/v1/jobs/history", { params }),
   create: (data: {
     name?: string;
     groups: Array<{
@@ -105,6 +107,13 @@ export const jobsApi = {
   get: (id: string) => api.get(`/api/v1/jobs/${id}`),
   cancel: (id: string) => api.post(`/api/v1/jobs/${id}/cancel`),
   retryFailed: (id: string) => api.post(`/api/v1/jobs/${id}/retry-failed`),
+  /** Borrado lógico: el job pasa al historial (reversible) */
+  remove: (id: string, reason?: string) =>
+    api.delete(`/api/v1/jobs/${id}`, { params: reason ? { reason } : undefined }),
+  restore: (id: string) => api.post(`/api/v1/jobs/${id}/restore`),
+  /** Archiva masivamente los jobs ya ejecutados */
+  archiveFinished: (data?: { older_than_days?: number; statuses?: string[] }) =>
+    api.post("/api/v1/jobs/archive-finished", data || {}),
 };
 
 
@@ -137,7 +146,9 @@ export const messagesApi = {
 };
 
 export const schedulesApi = {
-  list: () => api.get("/api/v1/schedules"),
+  list: (params?: { include_inactive?: boolean }) =>
+    api.get("/api/v1/schedules", { params }),
+  history: (limit = 50) => api.get("/api/v1/schedules/history", { params: { limit } }),
   get: (id: string) => api.get(`/api/v1/schedules/${id}`),
   create: (data: {
     job_id: string;
@@ -150,6 +161,9 @@ export const schedulesApi = {
     end_date?: string;
   }) => api.post("/api/v1/schedules", data),
   update: (id: string, data: any) => api.put(`/api/v1/schedules/${id}`, data),
+  toggle: (id: string, is_active?: boolean) =>
+    api.patch(`/api/v1/schedules/${id}/toggle`, { is_active }),
+  runNow: (id: string) => api.post(`/api/v1/schedules/${id}/run-now`),
   delete: (id: string) => api.delete(`/api/v1/schedules/${id}`),
 };
 

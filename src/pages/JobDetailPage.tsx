@@ -17,6 +17,8 @@ interface JobDetail {
   started_at: string | null;
   finished_at: string | null;
   created_at: string | null;
+  deleted_at: string | null;
+  is_deleted: boolean;
   groups: Array<{
     id: string;
     remote_jid: string;
@@ -157,6 +159,51 @@ export default function JobDetailPage() {
     } catch {}
   };
 
+  const handleDeleteJob = async () => {
+    if (!id) return;
+    if (
+      !window.confirm(
+        "¿Enviar este job al historial?\n\nEs un borrado lógico: no se borra nada y puedes restaurarlo desde la pestaña Historial."
+      )
+    )
+      return;
+    try {
+      await jobsApi.remove(id);
+      window.location.href = "/jobs";
+    } catch (err: any) {
+      window.alert(err.response?.data?.detail || "No se pudo eliminar el job");
+    }
+  };
+
+  const handleRestoreJob = async () => {
+    if (!id) return;
+    try {
+      await jobsApi.restore(id);
+      fetchJob();
+    } catch (err: any) {
+      window.alert(err.response?.data?.detail || "No se pudo restaurar el job");
+    }
+  };
+
+  const handleToggleSchedule = async (scheduleId: string, isActive: boolean) => {
+    try {
+      await schedulesApi.toggle(scheduleId, !isActive);
+      await loadSchedules();
+    } catch (err: any) {
+      window.alert(err.response?.data?.detail || "No se pudo cambiar la programación");
+    }
+  };
+
+  const handleRunScheduleNow = async (scheduleId: string) => {
+    if (!window.confirm("¿Ejecutar esta programación ahora mismo?")) return;
+    try {
+      const res = await schedulesApi.runNow(scheduleId);
+      if (res.data.job?.id) window.location.href = `/jobs/${res.data.job.id}`;
+    } catch (err: any) {
+      window.alert(err.response?.data?.detail || "No se pudo ejecutar");
+    }
+  };
+
   if (loading) return <div className="p-8 text-center">Cargando...</div>;
   if (error)
     return (
@@ -196,16 +243,38 @@ export default function JobDetailPage() {
               Cancelar
             </Button>
           )}
-          {(job.status === "completed_with_errors" || job.status === "error") && (
+          {(job.status === "completed_with_errors" || job.status === "error") && !job.is_deleted && (
             <Button variant="outline" onClick={handleRetry}>
               Reintentar fallidos
             </Button>
           )}
-          <Button variant="secondary" onClick={() => setShowSchedule(!showSchedule)}>
-            {showSchedule ? "Cerrar" : "⏰ Programar"}
-          </Button>
+          {!job.is_deleted && (
+            <Button variant="secondary" onClick={() => setShowSchedule(!showSchedule)}>
+              {showSchedule ? "Cerrar" : "⏰ Programar"}
+            </Button>
+          )}
+          {job.is_deleted ? (
+            <Button variant="outline" onClick={handleRestoreJob}>
+              ♻️ Restaurar
+            </Button>
+          ) : (
+            job.status !== "running" && job.status !== "pending" && (
+              <Button variant="outline" className="text-red-600" onClick={handleDeleteJob}>
+                🗑️ Eliminar
+              </Button>
+            )
+          )}
         </div>
       </div>
+
+      {job.is_deleted && (
+        <div className="rounded-md bg-yellow-50 text-yellow-800 border border-yellow-200 px-3 py-2 text-sm">
+          Este job está en el <strong>historial</strong> (borrado lógico
+          {job.deleted_at ? ` el ${new Date(job.deleted_at).toLocaleString()}` : ""}). Sus datos se
+          conservan y puedes restaurarlo cuando quieras.
+        </div>
+      )}
+
 
       {/* Progress bar */}
       {job.status === "running" && (
@@ -391,31 +460,69 @@ export default function JobDetailPage() {
               {scheduleSaving ? "Guardando..." : "Programar Job"}
             </Button>
 
-            {/* Show existing schedules */}
+            {/* Programaciones existentes */}
             {schedules.length > 0 && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm font-medium mb-2">Programaciones activas:</p>
+              <div className="mt-4 pt-4 border-t space-y-2">
+                <p className="text-sm font-medium">Programaciones de este job:</p>
                 {schedules.map((s: any) => (
-                  <div key={s.id} className="flex items-center justify-between text-sm bg-muted rounded p-2 mb-1 gap-2">
-                    <span className="text-xs md:text-sm">
-                      {s.schedule_type === "once" && s.run_date ? new Date(s.run_date).toLocaleString() : ""}
-                      {s.schedule_type === "daily" && s.run_time ? `Diario a las ${s.run_time}` : ""}
-                      {s.schedule_type === "weekly" && s.run_time ? `Semanal ${(s.days_of_week || []).join(", ")} a las ${s.run_time}` : ""}
-                      {s.schedule_type === "interval" ? `Cada ${s.interval_minutes} min` : ""}
-                    </span>
-                    <button
-                      onClick={async () => {
-                        await schedulesApi.delete(s.id);
-                        setSchedules((prev: any[]) => prev.filter((x: any) => x.id !== s.id));
-                      }}
-                      className="text-red-500 hover:underline text-xs shrink-0"
-                    >
-                      Eliminar
-                    </button>
+                  <div
+                    key={s.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm bg-muted rounded p-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={s.is_active ? "bg-green-500" : "bg-gray-400"}>
+                          {s.is_active ? "Activa" : "Pausada"}
+                        </Badge>
+                        <span className="text-xs md:text-sm">
+                          {s.schedule_type === "once" && s.run_date
+                            ? `Una vez · ${new Date(s.run_date).toLocaleString()}`
+                            : ""}
+                          {s.schedule_type === "daily" && s.run_time
+                            ? `Diario a las ${s.run_time}`
+                            : ""}
+                          {s.schedule_type === "weekly" && s.run_time
+                            ? `Semanal ${(s.days_of_week || []).join(", ")} a las ${s.run_time}`
+                            : ""}
+                          {s.schedule_type === "interval" ? `Cada ${s.interval_minutes} min` : ""}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Próxima: {s.next_run ? new Date(s.next_run).toLocaleString() : "—"}
+                        {" · "}Última: {s.last_run ? new Date(s.last_run).toLocaleString() : "—"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleSchedule(s.id, s.is_active)}
+                      >
+                        {s.is_active ? "Pausar" : "Activar"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleRunScheduleNow(s.id)}
+                      >
+                        ▶ Ahora
+                      </Button>
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm("¿Eliminar esta programación?")) return;
+                          await schedulesApi.delete(s.id);
+                          setSchedules((prev: any[]) => prev.filter((x: any) => x.id !== s.id));
+                        }}
+                        className="text-red-500 hover:underline text-xs shrink-0 px-1"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
+
           </CardContent>
         </Card>
       )}

@@ -10,22 +10,20 @@ const navItems = [
   { path: "/groups", label: "Grupos", icon: "👥" },
   { path: "/templates", label: "Plantillas", icon: "📝" },
   { path: "/jobs", label: "Jobs", icon: "📨" },
+  { path: "/schedules", label: "Programaciones", icon: "⏰" },
   { path: "/messages", label: "Mensajes", icon: "💬" },
 ];
 
 // Versión del deploy — actualizar al hacer deploy
-const APP_VERSION = "v1.8.0";
+const APP_VERSION = "v1.9.0";
 const APP_CHANGES = [
+  "🗂️ Eliminación lógica de jobs ejecutados (pestaña Historial + restaurar)",
+  "🧹 Archivado masivo de jobs ejecutados por antigüedad",
+  "⏰ Página Programaciones: crear, pausar/activar, ejecutar ahora, historial",
+  "🕘 Historial de ejecuciones del scheduler",
+  "🐛 Scheduler con zona horaria correcta (America/Bogota) y next_run confiable",
   "📱 Diseño responsive mobile (bottom nav + drawer lateral)",
   "📋 Tablas convertidas a cards en mobile",
-  "📷 Jobs incluyen imágenes desde plantillas (base64)",
-  "➕ Editar conexiones Evolution",
-  "🔍 Errores detallados al verificar conexión",
-  "🐛 Fix: Origin header en verificación Evolution",
-  "➕ CRUD de plantillas de mensajes",
-  "🔄 Jobs usan plantillas predefinidas",
-  "🐛 Fix: endpoint /instance/fetchInstances (era fetchAll)",
-  "🐛 Fix: re-encriptar API Key (CRYPTO_KEY inconsistente)",
 ];
 
 export default function AppLayout() {
