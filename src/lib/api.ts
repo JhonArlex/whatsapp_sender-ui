@@ -148,6 +148,7 @@ export const messagesApi = {
 export const schedulesApi = {
   list: (params?: { include_inactive?: boolean }) =>
     api.get("/api/v1/schedules", { params }),
+  timezones: () => api.get("/api/v1/schedules/timezones"),
   history: (limit = 50) => api.get("/api/v1/schedules/history", { params: { limit } }),
   get: (id: string) => api.get(`/api/v1/schedules/${id}`),
   create: (data: {
@@ -159,6 +160,7 @@ export const schedulesApi = {
     interval_minutes?: number;
     start_date?: string;
     end_date?: string;
+    timezone?: string;
   }) => api.post("/api/v1/schedules", data),
   update: (id: string, data: any) => api.put(`/api/v1/schedules/${id}`, data),
   toggle: (id: string, is_active?: boolean) =>
