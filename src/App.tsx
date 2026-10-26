@@ -10,6 +10,7 @@ import GroupsPage from "./pages/GroupsPage";
 import JobsPage from "./pages/JobsPage";
 import JobCreatePage from "./pages/JobCreatePage";
 import JobDetailPage from "./pages/JobDetailPage";
+import SchedulesPage from "./pages/SchedulesPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import { type ReactNode } from "react";
 
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/jobs/new" element={<JobCreatePage />} />
             <Route path="/jobs/:id" element={<JobDetailPage />} />
+            <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
           </Route>
 
