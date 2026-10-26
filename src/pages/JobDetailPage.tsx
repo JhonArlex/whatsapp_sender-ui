@@ -77,6 +77,11 @@ export default function JobDetailPage() {
   const [runTime, setRunTime] = useState("");
   const [daysOfWeek, setDaysOfWeek] = useState<string[]>([]);
   const [intervalMin, setIntervalMin] = useState(60);
+  const [schedTz, setSchedTz] = useState("America/Bogota");
+  const [tzOptions, setTzOptions] = useState<{ value: string; label: string }[]>([
+    { value: "America/Bogota", label: "Colombia (Bogotá)" },
+    { value: "America/Santiago", label: "Chile (Santiago)" },
+  ]);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleResult, setScheduleResult] = useState("");
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -100,6 +105,16 @@ export default function JobDetailPage() {
   };
 
   useEffect(() => {
+    schedulesApi
+      .timezones()
+      .then((res) => {
+        if (res.data?.timezones?.length) {
+          setTzOptions(res.data.timezones);
+          if (res.data.default) setSchedTz((prev) => prev || res.data.default);
+        }
+      })
+      .catch(() => {});
+
     fetchJob();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -362,9 +377,28 @@ export default function JobDetailPage() {
               </div>
             </div>
 
+            {scheduleType !== "interval" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Zona horaria</label>
+                <select
+                  value={schedTz}
+                  onChange={(e) => setSchedTz(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {tzOptions.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {scheduleType === "once" && (
               <div>
-                <label className="text-sm font-medium block mb-1">Fecha y hora</label>
+                <label className="text-sm font-medium block mb-1">
+                  Fecha y hora ({tzOptions.find((t) => t.value === schedTz)?.label || schedTz})
+                </label>
                 <input
                   type="datetime-local"
                   value={runDate}
@@ -441,8 +475,15 @@ export default function JobDetailPage() {
                 setScheduleSaving(true);
                 setScheduleResult("");
                 try {
-                  const data: any = { job_id: job.id, schedule_type: scheduleType };
-                  if (scheduleType === "once") data.run_date = new Date(runDate).toISOString();
+                  const data: any = {
+                    job_id: job.id,
+                    schedule_type: scheduleType,
+                    timezone: schedTz,
+                  };
+                  if (scheduleType === "once") {
+                    // naive: el backend lo interpreta en la zona elegida
+                    data.run_date = runDate.length === 16 ? `${runDate}:00` : runDate;
+                  }
                   if (scheduleType === "daily" || scheduleType === "weekly") data.run_time = runTime;
                   if (scheduleType === "weekly") data.days_of_week = daysOfWeek;
                   if (scheduleType === "interval") data.interval_minutes = intervalMin;
@@ -485,6 +526,9 @@ export default function JobDetailPage() {
                             ? `Semanal ${(s.days_of_week || []).join(", ")} a las ${s.run_time}`
                             : ""}
                           {s.schedule_type === "interval" ? `Cada ${s.interval_minutes} min` : ""}
+                          {s.timezone && s.schedule_type !== "interval"
+                            ? ` · hora ${s.timezone === "America/Santiago" ? "Chile" : s.timezone === "America/Bogota" ? "Colombia" : s.timezone}`
+                            : ""}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">

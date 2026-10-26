@@ -15,15 +15,14 @@ const navItems = [
 ];
 
 // Versión del deploy — actualizar al hacer deploy
-const APP_VERSION = "v1.9.0";
+const APP_VERSION = "v1.10.0";
 const APP_CHANGES = [
+  "🌎 Zona horaria por programación: Colombia, Chile, Perú, México, Argentina y más",
+  "🕘 Historial de ejecuciones muestra la hora en la zona de cada programación",
   "🗂️ Eliminación lógica de jobs ejecutados (pestaña Historial + restaurar)",
   "🧹 Archivado masivo de jobs ejecutados por antigüedad",
   "⏰ Página Programaciones: crear, pausar/activar, ejecutar ahora, historial",
-  "🕘 Historial de ejecuciones del scheduler",
-  "🐛 Scheduler con zona horaria correcta (America/Bogota) y next_run confiable",
-  "📱 Diseño responsive mobile (bottom nav + drawer lateral)",
-  "📋 Tablas convertidas a cards en mobile",
+  "🐛 Scheduler con zona horaria correcta y next_run confiable",
 ];
 
 export default function AppLayout() {

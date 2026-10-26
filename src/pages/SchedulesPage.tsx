@@ -20,6 +20,9 @@ interface Schedule {
   last_run: string | null;
   last_status: string | null;
   is_active: boolean;
+  timezone: string;
+  timezone_label: string;
+  timezone_effective: string;
 }
 
 interface JobOption {
@@ -38,6 +41,8 @@ interface HistoryRow {
   finalizado_en: string | null;
   estado: string;
   detalle: string | null;
+  timezone?: string;
+  timezone_label?: string;
 }
 
 const DAYS = [
@@ -50,23 +55,38 @@ const DAYS = [
   { value: "dom", label: "Dom" },
 ];
 
-function fmt(dt: string | null) {
+function fmt(dt: string | null, tz?: string) {
   if (!dt) return "—";
   try {
-    return new Date(dt).toLocaleString();
+    return new Intl.DateTimeFormat("es-CO", {
+      timeZone: tz || undefined,
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(dt));
   } catch {
-    return dt;
+    try {
+      return new Date(dt).toLocaleString();
+    } catch {
+      return dt;
+    }
   }
 }
 
+const TZ_FALLBACK = [
+  { value: "America/Bogota", label: "Colombia (Bogotá)" },
+  { value: "America/Santiago", label: "Chile (Santiago)" },
+];
+
 function describe(s: Schedule) {
+  const tzName = s.timezone_label || s.timezone_effective || "";
+  const hora = s.timezone_effective || s.timezone;
   switch (s.schedule_type) {
     case "once":
-      return `Una vez · ${fmt(s.run_date || s.next_run)}`;
+      return `Una vez · ${fmt(s.run_date || s.next_run, hora)}${tzName ? ` · hora ${tzName}` : ""}`;
     case "daily":
-      return `Diario · ${s.run_time || ""}`;
+      return `Diario a las ${s.run_time || ""}${tzName ? ` · hora ${tzName}` : ""}`;
     case "weekly":
-      return `Semanal · ${(s.days_of_week || []).join(", ")} · ${s.run_time || ""}`;
+      return `Semanal ${(s.days_of_week || []).join(", ")} a las ${s.run_time || ""}${tzName ? ` · hora ${tzName}` : ""}`;
     case "interval":
       return `Cada ${s.interval_minutes} min`;
     default:
@@ -93,14 +113,21 @@ export default function SchedulesPage() {
   const [daysOfWeek, setDaysOfWeek] = useState<string[]>(["lun", "mar", "mie", "jue", "vie"]);
   const [intervalMin, setIntervalMin] = useState(60);
   const [saving, setSaving] = useState(false);
+  const [tzOptions, setTzOptions] = useState<{ value: string; label: string }[]>(TZ_FALLBACK);
+  const [timezone, setTimezone] = useState("America/Bogota");
 
   const load = async () => {
     setLoading(true);
     try {
-      const [schedRes, jobsRes] = await Promise.all([
+      const [schedRes, jobsRes, tzRes] = await Promise.all([
         schedulesApi.list(),
         jobsApi.list({ limit: 100 }),
+        schedulesApi.timezones().catch(() => null),
       ]);
+      if (tzRes?.data?.timezones?.length) {
+        setTzOptions(tzRes.data.timezones);
+        setTimezone((prev) => prev || tzRes.data.default || "America/Bogota");
+      }
       setSchedules(schedRes.data.schedules || []);
       const activeJobs: JobOption[] = (jobsRes.data.jobs || []).filter(
         (j: JobOption) => j.status !== "running" && j.status !== "pending"
@@ -140,10 +167,12 @@ export default function SchedulesPage() {
     setSaving(true);
     setError("");
     try {
-      const data: any = { job_id: jobId, schedule_type: scheduleType };
+      const data: any = { job_id: jobId, schedule_type: scheduleType, timezone };
       if (scheduleType === "once") {
         if (!runDate) throw new Error("Indica fecha y hora");
-        data.run_date = new Date(runDate).toISOString();
+        // Se envía la hora "naive" (YYYY-MM-DDTHH:MM) para que el backend la
+        // interprete en la zona horaria elegida, no en la del navegador.
+        data.run_date = runDate.length === 16 ? `${runDate}:00` : runDate;
       }
       if (scheduleType === "daily" || scheduleType === "weekly") data.run_time = runTime;
       if (scheduleType === "weekly") {
@@ -299,9 +328,32 @@ export default function SchedulesPage() {
               </div>
             </div>
 
+            {scheduleType !== "interval" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Zona horaria</label>
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {tzOptions.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Las horas y fechas se interpretan en esta zona (ej. 09:00 en Chile ≠ 09:00 en
+                  Colombia). El servidor las guarda en UTC y ajusta solo el horario de verano.
+                </p>
+              </div>
+            )}
+
             {scheduleType === "once" && (
               <div>
-                <label className="text-sm font-medium block mb-1">Fecha y hora</label>
+                <label className="text-sm font-medium block mb-1">
+                  Fecha y hora ({tzOptions.find((t) => t.value === timezone)?.label || timezone})
+                </label>
                 <input
                   type="datetime-local"
                   value={runDate}
@@ -313,7 +365,9 @@ export default function SchedulesPage() {
 
             {(scheduleType === "daily" || scheduleType === "weekly") && (
               <div>
-                <label className="text-sm font-medium block mb-1">Hora (zona local del servidor: America/Bogota)</label>
+                <label className="text-sm font-medium block mb-1">
+                  Hora ({tzOptions.find((t) => t.value === timezone)?.label || timezone})
+                </label>
                 <input
                   type="time"
                   value={runTime}
@@ -400,9 +454,11 @@ export default function SchedulesPage() {
                   <p className="text-xs text-muted-foreground">{describe(s)}</p>
                   <p className="text-xs">
                     <span className="text-muted-foreground">Próxima: </span>
-                    <span className="font-medium">{fmt(s.next_run)}</span>
+                    <span className="font-medium">
+                      {fmt(s.next_run, s.timezone_effective || s.timezone)}
+                    </span>
                     <span className="text-muted-foreground"> · Última: </span>
-                    {fmt(s.last_run)}
+                    {fmt(s.last_run, s.timezone_effective || s.timezone)}
                     {s.last_status && (
                       <span className="text-muted-foreground"> ({s.last_status})</span>
                     )}
@@ -468,7 +524,7 @@ export default function SchedulesPage() {
                   <tbody>
                     {history.map((h) => (
                       <tr key={h.id} className="border-b">
-                        <td className="p-2 text-xs">{fmt(h.ejecutado_en)}</td>
+                        <td className="p-2 text-xs">{fmt(h.ejecutado_en, h.timezone)}</td>
                         <td className="p-2">
                           {h.job_id ? (
                             <Link to={`/jobs/${h.job_id}`} className="text-primary hover:underline">
@@ -478,7 +534,10 @@ export default function SchedulesPage() {
                             "—"
                           )}
                         </td>
-                        <td className="p-2 text-xs">{h.schedule_type}</td>
+                        <td className="p-2 text-xs">
+                          {h.schedule_type}
+                          {h.timezone_label ? ` · ${h.timezone_label}` : ""}
+                        </td>
                         <td className="p-2 text-xs">{h.hora_programada}</td>
                         <td className="p-2">
                           <Badge
@@ -495,7 +554,7 @@ export default function SchedulesPage() {
                             {h.estado}
                           </Badge>
                         </td>
-                        <td className="p-2 text-xs">{fmt(h.finalizado_en)}</td>
+                        <td className="p-2 text-xs">{fmt(h.finalizado_en, h.timezone)}</td>
                       </tr>
                     ))}
                   </tbody>
