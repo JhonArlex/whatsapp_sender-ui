@@ -15,8 +15,10 @@ const navItems = [
 ];
 
 // Versión del deploy — actualizar al hacer deploy
-const APP_VERSION = "v1.10.0";
+const APP_VERSION = "v1.11.0";
 const APP_CHANGES = [
+  "⚡ Crear job ya no sube las imágenes: el servidor las envía desde su propio almacenamiento (instantáneo en móvil)",
+  "📱 Mensajes de error claros al crear un job (antes el botón podía no responder)",
   "🌎 Zona horaria por programación: Colombia, Chile, Perú, México, Argentina y más",
   "🕘 Historial de ejecuciones muestra la hora en la zona de cada programación",
   "🗂️ Eliminación lógica de jobs ejecutados (pestaña Historial + restaurar)",

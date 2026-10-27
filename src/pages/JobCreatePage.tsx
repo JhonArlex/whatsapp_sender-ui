@@ -1,12 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { groupsApi, jobsApi, templatesApi } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-
-const API_URL = (import.meta.env.VITE_BULK_API_URL || "");
 
 interface Group {
   id: string;
@@ -26,22 +24,10 @@ interface SelectedGroup {
   evolution_base_url: string;
 }
 
-interface ImagePayload {
-  media_base64: string;
-  media_mimetype: string;
+interface MediaRef {
+  /** Ruta del archivo que ya vive en MinIO (no se sube desde el navegador) */
+  media_url: string;
   file_name: string;
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 export default function JobCreatePage() {
@@ -57,8 +43,7 @@ export default function JobCreatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const [selectedImages, setSelectedImages] = useState<ImagePayload[]>([]);
-  const [loadingImages, setLoadingImages] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<MediaRef[]>([]);
 
   useEffect(() => {
     groupsApi.list().then((res) => setGroups(res.data.groups)).catch(() => {});
@@ -88,51 +73,39 @@ export default function JobCreatePage() {
     setSelected(new Map());
   };
 
-  const loadTemplateImages = useCallback(async (tpl: any) => {
-    if (!tpl?.media_urls?.length) {
-      setSelectedImages([]);
-      return;
-    }
-
-    setLoadingImages(true);
-    const images: ImagePayload[] = [];
-
-    for (const url of tpl.media_urls) {
-      try {
-        const fullUrl = url.startsWith("http") ? url : `${API_URL}${url}`;
-        const response = await fetch(fullUrl, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("ws_access_token") || ""}`,
-          },
-        });
-        if (!response.ok) {
-          console.warn(`Error fetching image ${url}: HTTP ${response.status}`);
-          continue;
-        }
-        const blob = await response.blob();
-        const base64 = await blobToBase64(blob);
-        images.push({
-          media_base64: base64,
-          media_mimetype: blob.type || "image/jpeg",
-          file_name: url.split("/").pop() || "image.jpg",
-        });
-      } catch (err) {
-        console.error(`Error downloading image: ${url}`, err);
-      }
-    }
-
-    setSelectedImages(images);
-    setLoadingImages(false);
-  }, []);
+  /**
+   * Las imágenes de la plantilla ya están en MinIO el servidor: solo guardamos
+   * su ruta. El backend las resuelve al crear el job, así el navegador no
+   * re-sube cientos de KB (antes ~456 KB por creación → 20-40 s en móvil).
+   */
+  const loadTemplateMedia = (tpl: any) => {
+    const urls: string[] = tpl?.media_urls || [];
+    setSelectedMedia(
+      urls.map((url) => ({
+        media_url: url,
+        file_name: url.split("?")[0].split("/").pop() || "image.jpg",
+      }))
+    );
+  };
 
   const handleSelectTemplate = (t: any) => {
     setSelectedTemplate(t);
     setMessageText(t.content);
-    loadTemplateImages(t);
+    setError("");
+    loadTemplateMedia(t);
   };
 
   const handleCreate = async () => {
-    if (selected.size === 0 || !messageText.trim()) return;
+    // Nunca fallar en silencio: el usuario debe saber por qué no avanza
+    if (selected.size === 0) {
+      setError("Selecciona al menos un grupo antes de iniciar el envío.");
+      return;
+    }
+    if (!messageText.trim()) {
+      setError("Escribe el mensaje de texto o elige una plantilla antes de iniciar el envío.");
+      return;
+    }
+
     setCreating(true);
     setError("");
 
@@ -146,13 +119,13 @@ export default function JobCreatePage() {
 
     let messages: any[];
 
-    if (selectedImages.length > 0) {
-      messages = selectedImages.map((img, i) => ({
+    if (selectedMedia.length > 0) {
+      // Se envía solo la ruta: el backend copia el archivo desde MinIO.
+      messages = selectedMedia.map((media, i) => ({
         msg_type: "image",
         content: i === 0 ? messageText : "",
-        media_base64: img.media_base64,
-        media_mimetype: img.media_mimetype,
-        file_name: img.file_name,
+        media_url: media.media_url,
+        file_name: media.file_name,
       }));
     } else {
       messages = [{ msg_type: "text", content: messageText }];
@@ -166,7 +139,17 @@ export default function JobCreatePage() {
       });
       navigate(`/jobs/${res.data.id}`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Error al crear job");
+      if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        setError(
+          "La creación tardó demasiado. El job puede haberse creado igualmente: revisa la lista de Jobs antes de reintentar (para no duplicar el envío)."
+        );
+      } else if (!err.response) {
+        setError(
+          "No se pudo contactar con el servidor (conexión lenta o cortada). Revisa la lista de Jobs antes de reintentar."
+        );
+      } else {
+        setError(err.response?.data?.detail || "Error al crear job");
+      }
     } finally {
       setCreating(false);
     }
@@ -319,11 +302,10 @@ export default function JobCreatePage() {
                 {selectedTemplate.link_url && (
                   <p className="text-xs text-blue-600 truncate">🔗 {selectedTemplate.link_url}</p>
                 )}
-                {loadingImages && (
-                  <p className="text-xs text-muted-foreground animate-pulse">⏳ Cargando imágenes…</p>
-                )}
-                {!loadingImages && selectedImages.length > 0 && (
-                  <p className="text-xs text-green-600">✅ {selectedImages.length} imagen(es) lista(s) para enviar</p>
+                {selectedMedia.length > 0 && (
+                  <p className="text-xs text-green-600">
+                    ✅ {selectedMedia.length} imagen(es) adjunta(s) — se envían desde el servidor, sin subirlas de nuevo
+                  </p>
                 )}
               </div>
             )}
@@ -342,7 +324,7 @@ export default function JobCreatePage() {
                 onChange={(e) => setMessageText(e.target.value)}
                 required
               />
-              {selectedImages.length > 0 && (
+              {selectedMedia.length > 0 && (
                 <p className="text-xs text-muted-foreground">📷 El texto será el caption de la primera imagen</p>
               )}
             </div>
@@ -372,9 +354,9 @@ export default function JobCreatePage() {
               <p>
                 <strong>Grupos:</strong> {selected.size}
               </p>
-              {selectedImages.length > 0 && (
+              {selectedMedia.length > 0 && (
                 <p>
-                  <strong>Imágenes:</strong> {selectedImages.length}
+                  <strong>Imágenes:</strong> {selectedMedia.length}
                 </p>
               )}
               <p>
@@ -393,12 +375,8 @@ export default function JobCreatePage() {
               <Button variant="outline" onClick={() => setStep(2)}>
                 Atrás
               </Button>
-              <Button onClick={handleCreate} disabled={creating || loadingImages}>
-                {loadingImages
-                  ? "Cargando imágenes…"
-                  : creating
-                    ? "Creando…"
-                    : "Iniciar envío"}
+              <Button onClick={handleCreate} disabled={creating}>
+                {creating ? "Creando…" : "Iniciar envío"}
               </Button>
             </div>
           </CardContent>
