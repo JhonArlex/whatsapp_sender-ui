@@ -101,9 +101,11 @@ export const jobsApi = {
       content: string;
       media_base64?: string;
       media_mimetype?: string;
+      /** Ruta del archivo ya almacenado en MinIO (preferido: no re-sube bytes) */
+      media_url?: string;
       file_name?: string;
     }>;
-  }) => api.post("/api/v1/jobs", data),
+  }) => api.post("/api/v1/jobs", data, { timeout: 120000 }),
   get: (id: string) => api.get(`/api/v1/jobs/${id}`),
   cancel: (id: string) => api.post(`/api/v1/jobs/${id}/cancel`),
   retryFailed: (id: string) => api.post(`/api/v1/jobs/${id}/retry-failed`),
